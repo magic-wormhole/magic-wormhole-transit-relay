@@ -5,7 +5,7 @@ from twisted.internet import protocol, reactor, defer
 from twisted.internet.endpoints import clientFromString, connectProtocol
 from twisted.web import client
 from .common import ServerBase
-from ..server import transit_server
+from .. import transit_server
 
 class Accumulator(protocol.Protocol):
     def __init__(self):

@@ -188,7 +188,7 @@ class TransitConnection(protocol.Protocol):
         self.factory.recordUsage(self._started, "errory", 0,
                                  total_time, None)
 
-class Transit(protocol.ServerFactory, service.MultiService):
+class Transit(protocol.ServerFactory):
     # I manage pairs of simultaneous connections to a secondary TCP port,
     # both forwarded to the other. Clients must begin each connection with
     # "please relay TOKEN for SIDE\n" (or a legacy form without the "for
@@ -221,11 +221,13 @@ class Transit(protocol.ServerFactory, service.MultiService):
     MAXTIME = 60*SECONDS
     protocol = TransitConnection
 
-    def __init__(self, db, blur_usage):
+    def __init__(self, blur_usage, usage_logfile, stats_file):
         service.MultiService.__init__(self)
-        self._db = db
         self._blur_usage = blur_usage
         self._log_requests = blur_usage is None
+        if usage_logfile:
+            self._usage_logfile = open(usage_logfile, "a")
+        self._stats_file = stats_file
         self._pending_requests = {} # token -> set((side, TransitConnection))
         self._active_connections = set() # TransitConnection
         self._counts = collections.defaultdict(int)
@@ -264,10 +266,11 @@ class Transit(protocol.ServerFactory, service.MultiService):
     def recordUsage(self, started, result, total_bytes,
                     total_time, waiting_time):
         if self._log_requests:
-            log.msg("Transit.recordUsage (%dB)" % total_bytes)
+            log.msg(format="Transit.recordUsage {bytes}B", bytes=total_bytes)
         if self._blur_usage:
             started = self._blur_usage * (started // self._blur_usage)
             total_bytes = blur_size(total_bytes)
+        if self._usage_logfile
         self._db.execute("INSERT INTO `transit_usage`"
                          " (`started`, `total_time`, `waiting_time`,"
                          "  `total_bytes`, `result`)"
