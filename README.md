@@ -1,4 +1,9 @@
 # magic-wormhole-transit-relay
+
+[![Build Status](https://travis-ci.org/warner/magic-wormhole-transit-relay.svg?branch=master)](https://travis-ci.org/warner/magic-wormhole-transit-relay)
+[![codecov.io](https://codecov.io/github/warner/magic-wormhole-transit-relay/coverage.svg?branch=master)](https://codecov.io/github/warner/magic-wormhole-transit-relay?branch=master)
+
+
 Transit Relay server for Magic-Wormhole
 
 This repo implements the Magic-Wormhole "Transit Relay", a server that helps
