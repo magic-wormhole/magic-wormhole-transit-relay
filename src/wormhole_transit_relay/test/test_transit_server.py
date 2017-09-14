@@ -3,7 +3,6 @@ from binascii import hexlify
 from twisted.trial import unittest
 from twisted.internet import protocol, reactor, defer
 from twisted.internet.endpoints import clientFromString, connectProtocol
-from twisted.web import client
 from .common import ServerBase
 from .. import transit_server
 
@@ -50,11 +49,6 @@ class Transit(ServerBase, unittest.TestCase):
         self.failUnlessEqual(blur(1050e6), 1100e6)
         self.failUnlessEqual(blur(1100e6), 1100e6)
         self.failUnlessEqual(blur(1150e6), 1200e6)
-
-    @defer.inlineCallbacks
-    def test_web_request(self):
-        resp = yield client.getPage('http://127.0.0.1:{}/'.format(self.relayport).encode('ascii'))
-        self.assertEqual('Wormhole Relay'.encode('ascii'), resp.strip())
 
     @defer.inlineCallbacks
     def test_register(self):

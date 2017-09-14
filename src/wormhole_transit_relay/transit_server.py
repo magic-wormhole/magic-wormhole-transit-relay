@@ -2,7 +2,6 @@ from __future__ import print_function, unicode_literals
 import os, re, time, json
 from twisted.python import log
 from twisted.internet import protocol
-from twisted.application import service
 
 SECONDS = 1.0
 MINUTE = 60*SECONDS
@@ -222,11 +221,9 @@ class Transit(protocol.ServerFactory):
     protocol = TransitConnection
 
     def __init__(self, blur_usage, usage_logfile, stats_file):
-        service.MultiService.__init__(self)
         self._blur_usage = blur_usage
         self._log_requests = blur_usage is None
-        if usage_logfile:
-            self._usage_logfile = open(usage_logfile, "a")
+        self._usage_logfile = open(usage_logfile, "a") if usage_logfile else None
         self._stats_file = stats_file
         self._pending_requests = {} # token -> set((side, TransitConnection))
         self._active_connections = set() # TransitConnection
