@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-import re, time, collections
+import os, re, time, json
 from twisted.python import log
 from twisted.internet import protocol
 from twisted.application import service
@@ -230,7 +230,7 @@ class Transit(protocol.ServerFactory):
         self._stats_file = stats_file
         self._pending_requests = {} # token -> set((side, TransitConnection))
         self._active_connections = set() # TransitConnection
-        self._counts = collections.defaultdict(int)
+        self._counts = {"lonely": 0, "happy": 0, "errory": 0}
         self._count_bytes = 0
 
     def connection_got_token(self, token, new_side, new_tc):
@@ -265,21 +265,25 @@ class Transit(protocol.ServerFactory):
 
     def recordUsage(self, started, result, total_bytes,
                     total_time, waiting_time):
+        self._counts[result] += 1
+        self._count_bytes += total_bytes
         if self._log_requests:
             log.msg(format="Transit.recordUsage {bytes}B", bytes=total_bytes)
         if self._blur_usage:
             started = self._blur_usage * (started // self._blur_usage)
             total_bytes = blur_size(total_bytes)
-        if self._usage_logfile
-        self._db.execute("INSERT INTO `transit_usage`"
-                         " (`started`, `total_time`, `waiting_time`,"
-                         "  `total_bytes`, `result`)"
-                         " VALUES (?,?,?, ?,?)",
-                         (started, total_time, waiting_time,
-                          total_bytes, result))
-        self._db.commit()
-        self._counts[result] += 1
-        self._count_bytes += total_bytes
+        if self._usage_logfile:
+            data = {"started": started,
+                    "total_time": total_time,
+                    "waiting_time": waiting_time,
+                    "total_bytes": total_bytes,
+                    "mood": result,
+                    }
+            self._usage_logfile.write(json.dumps(data))
+            self._usage_logfile.write("\n")
+            self._usage_logfile.flush()
+        if self._stats_file:
+            self._update_stats(total_bytes, result)
 
     def transitFinished(self, tc, token, side, description):
         if token in self._pending_requests:
@@ -297,16 +301,17 @@ class Transit(protocol.ServerFactory):
             log.msg("transitFailed %r" % p)
         pass
 
-    def get_stats(self):
-        stats = {}
-        def q(query, values=()):
-            row = self._db.execute(query, values).fetchone()
-            return list(row.values())[0]
+    def _update_stats(self, total_bytes, mood):
+        try:
+            with open(self._stats_file, "rb") as f:
+                stats = json.load(f)
+        except (EnvironmentError, ValueError):
+            stats = {}
 
         # current status: expected to be zero most of the time
-        c = stats["active"] = {}
-        c["connected"] = len(self._active_connections) / 2
-        c["waiting"] = len(self._pending_requests)
+        stats["active"] = {"connected": len(self._active_connections) / 2,
+                          "waiting": len(self._pending_requests),
+                         }
 
         # usage since last reboot
         rb = stats["since_reboot"] = {}
@@ -317,15 +322,20 @@ class Transit(protocol.ServerFactory):
             rbm[result] = count
 
         # historical usage (all-time)
-        u = stats["all_time"] = {}
-        u["total"] = q("SELECT COUNT() FROM `transit_usage`")
-        u["bytes"] = q("SELECT SUM(`total_bytes`) FROM `transit_usage`") or 0
-        um = u["moods"] = {}
-        um["happy"] = q("SELECT COUNT() FROM `transit_usage`"
-                        " WHERE `result`='happy'")
-        um["lonely"] = q("SELECT COUNT() FROM `transit_usage`"
-                         " WHERE `result`='lonely'")
-        um["errory"] = q("SELECT COUNT() FROM `transit_usage`"
-                         " WHERE `result`='errory'")
-
-        return stats
+        if "all_time" not in stats:
+            stats["all_time"] = {}
+        u = stats["all_time"]
+        u["total"] = u.get("total", 0) + 1
+        u["bytes"] = u.get("bytes", 0) + total_bytes
+        if "moods" not in u:
+            u["moods"] = {}
+        um = u["moods"]
+        for m in "happy", "lonely", "errory":
+            if m not in um:
+                um[m] = 0
+        um[mood] += 1
+        tmpfile = self._stats_file + ".tmp"
+        with open(tmpfile, "wb") as f:
+            f.write(json.dumps(stats))
+            f.write("\n")
+        os.rename(tmpfile, self._stats_file)
