@@ -300,7 +300,7 @@ class Transit(protocol.ServerFactory):
 
     def _update_stats(self, total_bytes, mood):
         try:
-            with open(self._stats_file, "rb") as f:
+            with open(self._stats_file, "r") as f:
                 stats = json.load(f)
         except (EnvironmentError, ValueError):
             stats = {}
@@ -332,7 +332,7 @@ class Transit(protocol.ServerFactory):
                 um[m] = 0
         um[mood] += 1
         tmpfile = self._stats_file + ".tmp"
-        with open(tmpfile, "wb") as f:
+        with open(tmpfile, "w") as f:
             f.write(json.dumps(stats))
             f.write("\n")
         os.rename(tmpfile, self._stats_file)

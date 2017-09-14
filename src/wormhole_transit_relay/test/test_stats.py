@@ -9,7 +9,7 @@ class UsageLog(unittest.TestCase):
         os.mkdir(d)
         usage_logfile = os.path.join(d, "usage.log")
         def read():
-            with open(usage_logfile, "rb") as f:
+            with open(usage_logfile, "r") as f:
                 return [json.loads(line) for line in f.readlines()]
         t = Transit(None, usage_logfile, None)
         t.recordUsage(started=123, result="happy", total_bytes=100,
