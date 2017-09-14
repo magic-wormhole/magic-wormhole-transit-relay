@@ -1,5 +1,6 @@
 from __future__ import print_function, unicode_literals
 import os, json
+import mock
 from twisted.trial import unittest
 from ..transit_server import Transit
 
@@ -40,3 +41,19 @@ class UsageLog(unittest.TestCase):
                                            total_time=12, waiting_time=4,
                                            total_bytes=300)])
 
+class StandardLogfile(unittest.TestCase):
+    def test_log(self):
+        # the default, when _blur_usage is None, will log to twistd.log
+        t = Transit(blur_usage=None, usage_logfile=None, stats_file=None)
+        with mock.patch("twisted.python.log.msg") as m:
+            t.recordUsage(started=123, result="happy", total_bytes=100,
+                        total_time=10, waiting_time=2)
+        self.assertEqual(m.mock_calls, [mock.call(format="Transit.recordUsage {bytes}B", bytes=100)])
+
+    def test_do_not_log(self):
+        # the default, when _blur_usage is None, will log to twistd.log
+        t = Transit(blur_usage=60, usage_logfile=None, stats_file=None)
+        with mock.patch("twisted.python.log.msg") as m:
+            t.recordUsage(started=123, result="happy", total_bytes=100,
+                          total_time=10, waiting_time=2)
+        self.assertEqual(m.mock_calls, [])
