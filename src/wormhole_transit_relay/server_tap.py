@@ -11,7 +11,8 @@ glues the two TCP sockets together.
 
 If --usage-logfile= is provided, a line will be written to the given file after
 each connection is done. This line will be a complete JSON object (starting
-with "{" and ending with "}\n"). The keys will be:
+with "{", ending with "}\n", and containing no internal newlines). The keys
+will be:
 
 * 'started': number, seconds since epoch
 * 'total_time': number, seconds from open to last close
