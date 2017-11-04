@@ -2,6 +2,7 @@ from __future__ import print_function, unicode_literals
 import os, re, time, json
 from twisted.python import log
 from twisted.internet import protocol
+from .database import get_db
 
 SECONDS = 1.0
 MINUTE = 60*SECONDS
@@ -220,15 +221,16 @@ class Transit(protocol.ServerFactory):
     MAXTIME = 60*SECONDS
     protocol = TransitConnection
 
-    def __init__(self, blur_usage, usage_logfile, stats_file):
+    def __init__(self, blur_usage, log_stdout, usage_db):
         self._blur_usage = blur_usage
-        self._log_requests = blur_usage is None
-        self._usage_logfile = open(usage_logfile, "a") if usage_logfile else None
-        self._stats_file = stats_file
+        self._debug_log = False
+        self._log_stdout = log_stdout
+        self._db = None
+        if usage_db:
+            self._db = get_db(usage_db)
+        # we don't track TransitConnections until they submit a token
         self._pending_requests = {} # token -> set((side, TransitConnection))
         self._active_connections = set() # TransitConnection
-        self._counts = {"lonely": 0, "happy": 0, "errory": 0}
-        self._count_bytes = 0
 
     def connection_got_token(self, token, new_side, new_tc):
         if token not in self._pending_requests:
@@ -240,7 +242,7 @@ class Transit(protocol.ServerFactory):
                 or (new_side is None)
                 or (old_side != new_side)):
                 # we found a match
-                if self._log_requests:
+                if self._debug_log:
                     log.msg("transit relay 2: %s" % new_tc.describeToken())
 
                 # drop and stop tracking the rest
@@ -255,32 +257,10 @@ class Transit(protocol.ServerFactory):
                 new_tc.buddy_connected(old_tc)
                 old_tc.buddy_connected(new_tc)
                 return
-        if self._log_requests:
+        if self._debug_log:
             log.msg("transit relay 1: %s" % new_tc.describeToken())
         potentials.add((new_side, new_tc))
         # TODO: timer
-
-    def recordUsage(self, started, result, total_bytes,
-                    total_time, waiting_time):
-        self._counts[result] += 1
-        self._count_bytes += total_bytes
-        if self._log_requests:
-            log.msg(format="Transit.recordUsage {bytes}B", bytes=total_bytes)
-        if self._blur_usage:
-            started = self._blur_usage * (started // self._blur_usage)
-            total_bytes = blur_size(total_bytes)
-        if self._usage_logfile:
-            data = {"started": started,
-                    "total_time": total_time,
-                    "waiting_time": waiting_time,
-                    "total_bytes": total_bytes,
-                    "mood": result,
-                    }
-            self._usage_logfile.write(json.dumps(data))
-            self._usage_logfile.write("\n")
-            self._usage_logfile.flush()
-        if self._stats_file:
-            self._update_stats(total_bytes, result)
 
     def transitFinished(self, tc, token, side, description):
         if token in self._pending_requests:
@@ -289,50 +269,63 @@ class Transit(protocol.ServerFactory):
                 self._pending_requests[token].remove(side_tc)
             if not self._pending_requests[token]: # set is now empty
                 del self._pending_requests[token]
-        if self._log_requests:
+        if self._debug_log:
             log.msg("transitFinished %s" % (description,))
         self._active_connections.discard(tc)
 
     def transitFailed(self, p):
-        if self._log_requests:
+        if self._debug_log:
             log.msg("transitFailed %r" % p)
         pass
 
-    def _update_stats(self, total_bytes, mood):
-        try:
-            with open(self._stats_file, "r") as f:
-                stats = json.load(f)
-        except (EnvironmentError, ValueError):
-            stats = {}
+    def recordUsage(self, started, result, total_bytes,
+                    total_time, waiting_time):
+        if self._debug_log:
+            log.msg(format="Transit.recordUsage {bytes}B", bytes=total_bytes)
+        if self._blur_usage:
+            started = self._blur_usage * (started // self._blur_usage)
+            total_bytes = blur_size(total_bytes)
+        if self._log_stdout:
+            data = {"started": started,
+                    "total_time": total_time,
+                    "waiting_time": waiting_time,
+                    "total_bytes": total_bytes,
+                    "mood": result,
+                    }
+            sys.stdout.write(json.dumps(data))
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+        if self._db:
+            self._db.execute("INSERT INTO `usage`"
+                             " (`started`, `total_time`, `waiting_time`,"
+                             "  `total_bytes`, `result`)"
+                             " VALUES (?,?,?, ?,?)",
+                             (started, total_time, waiting_time,
+                              total_bytes, result))
+            self._update_stats()
+            self._db.commit()
 
-        # current status: expected to be zero most of the time
-        stats["active"] = {"connected": len(self._active_connections) / 2,
-                          "waiting": len(self._pending_requests),
-                         }
+    def timerUpdateStats(self):
+        self._update_stats()
+        self._db.commit()
 
-        # usage since last reboot
-        rb = stats["since_reboot"] = {}
-        rb["bytes"] = self._count_bytes
-        rb["total"] = sum(self._counts.values(), 0)
-        rbm = rb["moods"] = {}
-        for result, count in self._counts.items():
-            rbm[result] = count
-
-        # historical usage (all-time)
-        if "all_time" not in stats:
-            stats["all_time"] = {}
-        u = stats["all_time"]
-        u["total"] = u.get("total", 0) + 1
-        u["bytes"] = u.get("bytes", 0) + total_bytes
-        if "moods" not in u:
-            u["moods"] = {}
-        um = u["moods"]
-        for m in "happy", "lonely", "errory":
-            if m not in um:
-                um[m] = 0
-        um[mood] += 1
-        tmpfile = self._stats_file + ".tmp"
-        with open(tmpfile, "w") as f:
-            f.write(json.dumps(stats))
-            f.write("\n")
-        os.rename(tmpfile, self._stats_file)
+    def _update_stats(self):
+        # current status: should be zero when idle
+        reboot = self._reboot
+        last_update = time.time()
+        connected = len(self._active_connections) / 2
+        # TODO: when a connection is half-closed, len(active) will be odd. a
+        # moment later (hopefully) the other side will disconnect, but
+        # _update_stats isn't updated until later.
+        waiting = len(self._pending_tokens)
+        # "waiting" doesn't count multiple parallel connections from the same
+        # side
+        incomplete_bytes = sum(tc._total_sent
+                               for tc in self._active_connections)
+        self._db.execute("DELETE FROM `current`")
+        self._db.execute("INSERT INTO `current`"
+                         " (`reboot`, `last_update`, `connected`, `waiting`,"
+                         "  `incomplete_bytes`)"
+                         " VALUES (?, ?, ?, ?, ?)",
+                         (reboot, last_update, connected, waiting,
+                          incomplete_bytes))

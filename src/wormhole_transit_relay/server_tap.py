@@ -1,7 +1,8 @@
 from . import transit_server
 from twisted.internet import reactor
 from twisted.python import usage
-from twisted.application.internet import StreamServerEndpointService
+from twisted.application.internet import (TimerService,
+                                          StreamServerEndpointService)
 from twisted.internet import endpoints
 
 LONGDESC = """\
@@ -9,10 +10,10 @@ This plugin sets up a 'Transit Relay' server for magic-wormhole. This service
 listens for TCP connections, finds pairs which present the same handshake, and
 glues the two TCP sockets together.
 
-If --usage-logfile= is provided, a line will be written to the given file after
-each connection is done. This line will be a complete JSON object (starting
-with "{", ending with "}\n", and containing no internal newlines). The keys
-will be:
+If --log-stdout is provided, a line will be written to stdout after each
+connection is done. This line will be a complete JSON object (starting with
+"{", ending with "}\n", and containing no internal newlines). The keys will
+be:
 
 * 'started': number, seconds since epoch
 * 'total_time': number, seconds from open to last close
@@ -27,35 +28,62 @@ second matching side never appeared (and thus 'waiting_time' will be null).
 If --blur-usage= is provided, then 'started' will be rounded to the given time
 interval, and 'total_bytes' will be rounded as well.
 
-If --stats-file is provided, the server will periodically write a simple JSON
-dictionary to that file (atomically), with cumulative usage data (since last
-reboot, and all-time). This information is *not* blurred (the assumption is
-that it will be overwritten on a regular basis, and is aggregated anyways). The
-keys are:
+If --usage-db= is provided, the server will maintain a SQLite database in the
+given file. Current, recent, and historical usage data will be written to the
+database, and external tools can query the DB for metrics: the munin plugins
+in misc/ may be useful. Timestamps and sizes in this file will respect
+--blur-usage. The four tables are:
 
-* active.connected: number of paired connections
-* active.waiting: number of not-yet-paired connections
-* since_reboot.bytes: sum of 'total_bytes'
-* since_reboot.total: number of completed connections
-* since_reboot.moods: dict mapping mood string to number of connections
-* all_time.bytes: same
-* all_time.total
-* all_time.moods
+"current" contains a single row, with these columns:
 
-The server will write twistd.pid and twistd.log files as usual, if daemonized
-by twistd. twistd.log will only contain startup, shutdown, and exception
-messages. To record information about each connection, use --usage-logfile.
+* connected: number of paired connections
+* waiting: number of not-yet-paired connections
+* partal_bytes: bytes transmitted over not-yet-complete connections
+
+"since_reboot" contains a single row, with these columns:
+
+* bytes: sum of 'total_bytes'
+* connections: number of completed connections
+* mood_happy: count of connections that finished "happy": both sides gave correct handshake
+* mood_lonely: one side gave good handshake, other side never showed up
+* mood_errory: one side gave a bad handshake
+
+"all_time" contains a single row, with these columns:
+
+* bytes:
+* connections:
+* mood_happy:
+* mood_lonely:
+* mood_errory:
+
+"usage" contains one row per closed connection, with these columns:
+
+* started: seconds since epoch, rounded to "blur time"
+* total_time: seconds from first open to last close
+* waiting_time: seconds from first open to second open, or None
+* bytes: total bytes relayed (in both directions)
+* result: (string) the mood: happy, lonely, errory
+
+All tables will be updated after each connection is finished. In addition,
+the "current" table will be updated at least once every 5 minutes.
+
+If daemonized by twistd, the server will write twistd.pid and twistd.log
+files as usual. By default twistd.log will only contain startup, shutdown,
+and exception messages. Adding --log-stdout will add per-connection JSON
+lines to twistd.log.
 """
 
 class Options(usage.Options):
-    #synopsis = "[--port=] [--usage-logfile=] [--blur-usage=] [--stats-json=]"
+    #synopsis = "[--port=] [--log-stdout] [--blur-usage=] [--usage-db=]"
     longdesc = LONGDESC
 
+    optFlags = {
+        ("log-stdout", None, "write JSON usage logs to stdout"),
+        }
     optParameters = [
         ("port", "p", "tcp:4001", "endpoint to listen on"),
         ("blur-usage", None, None, "blur timestamps and data sizes in logs"),
-        ("usage-logfile", None, None, "record usage data (JSON lines)"),
-        ("stats-file", None, None, "record usage in JSON format"),
+        ("usage-db", None, None, "record usage data (SQLite)"),
         ]
 
     def opt_blur_usage(self, arg):
@@ -65,6 +93,9 @@ class Options(usage.Options):
 def makeService(config, reactor=reactor):
     ep = endpoints.serverFromString(reactor, config["port"]) # to listen
     f = transit_server.Transit(blur_usage=config["blur-usage"],
-                               usage_logfile=config["usage-logfile"],
-                               stats_file=config["stats-file"])
-    return StreamServerEndpointService(ep, f)
+                               log_stdout=config["log-stdout"],
+                               usage_db=config["usage-db"])
+    parent = service.MultiService()
+    StreamServerEndpointService(ep, f).setServiceParent(parent)
+    TimerService(5.0, f.timerUpdateStats).setServiceParent(parent)
+    return parent
