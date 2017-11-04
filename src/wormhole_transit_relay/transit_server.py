@@ -2,6 +2,7 @@ from __future__ import print_function, unicode_literals
 import os, re, time, json
 from twisted.python import log
 from twisted.internet import protocol
+from .database import get_db
 
 SECONDS = 1.0
 MINUTE = 60*SECONDS
