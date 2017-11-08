@@ -7,8 +7,8 @@ CREATE TABLE `version` -- contains one row
 
 CREATE TABLE `current` -- contains one row
 (
- `reboot` INTEGER, -- seconds since epoch of most recent reboot
- `last_update` INTEGER, -- when `current` was last updated
+ `rebooted` INTEGER, -- seconds since epoch of most recent reboot
+ `updated` INTEGER, -- when `current` was last updated
  `connected` INTEGER, -- number of current paired connections
  `waiting` INTEGER, -- number of not-yet-paired connections
  `incomplete_bytes` INTEGER -- bytes sent through not-yet-complete connections
@@ -26,5 +26,5 @@ CREATE TABLE `usage`
  --  "lonely": good handshake, but the other side never showed up
  --  "happy": both sides gave correct handshake
 );
-CREATE INDEX `transit_usage_idx` ON `transit_usage` (`started`);
-CREATE INDEX `transit_usage_result_idx` ON `transit_usage` (`result`);
+CREATE INDEX `usage_started_index` ON `usage` (`started`);
+CREATE INDEX `usage_result_index` ON `usage` (`result`);

@@ -1,59 +1,89 @@
 from __future__ import print_function, unicode_literals
-import os, json
+import os, io, json, sqlite3
 import mock
 from twisted.trial import unittest
 from ..transit_server import Transit
+from .. import database
 
-class UsageLog(unittest.TestCase):
-    def test_log(self):
+class DB(unittest.TestCase):
+    def open_db(self, dbfile):
+        db = sqlite3.connect(dbfile)
+        database._initialize_db_connection(db)
+        return db
+
+    def test_db(self):
         d = self.mktemp()
         os.mkdir(d)
-        usage_logfile = os.path.join(d, "usage.log")
-        def read():
-            with open(usage_logfile, "r") as f:
-                return [json.loads(line) for line in f.readlines()]
-        t = Transit(None, usage_logfile, None)
-        t.recordUsage(started=123, result="happy", total_bytes=100,
-                      total_time=10, waiting_time=2)
-        self.assertEqual(read(), [dict(started=123, mood="happy",
-                                       total_time=10, waiting_time=2,
-                                       total_bytes=100)])
+        usage_db = os.path.join(d, "usage.sqlite")
+        with mock.patch("time.time", return_value=456):
+            t = Transit(blur_usage=None, log_file=None, usage_db=usage_db)
+        db = self.open_db(usage_db)
 
-        t.recordUsage(started=150, result="errory", total_bytes=200,
-                      total_time=11, waiting_time=3)
-        self.assertEqual(read(), [dict(started=123, mood="happy",
-                                       total_time=10, waiting_time=2,
-                                       total_bytes=100),
-                                  dict(started=150, mood="errory",
-                                       total_time=11, waiting_time=3,
-                                       total_bytes=200),
-                                      ])
-
-        if False:
-            # the current design opens the logfile exactly once, at process
-            # start, in the faint hopes of surviving an exhaustion of available
-            # file descriptors. This should be rethought.
-            os.unlink(usage_logfile)
-
-            t.recordUsage(started=200, result="lonely", total_bytes=300,
-                          total_time=12, waiting_time=4)
-            self.assertEqual(read(), [dict(started=200, mood="lonely",
-                                           total_time=12, waiting_time=4,
-                                           total_bytes=300)])
-
-class StandardLogfile(unittest.TestCase):
-    def test_log(self):
-        # the default, when _blur_usage is None, will log to twistd.log
-        t = Transit(blur_usage=None, usage_logfile=None, stats_file=None)
-        with mock.patch("twisted.python.log.msg") as m:
-            t.recordUsage(started=123, result="happy", total_bytes=100,
-                        total_time=10, waiting_time=2)
-        self.assertEqual(m.mock_calls, [mock.call(format="Transit.recordUsage {bytes}B", bytes=100)])
-
-    def test_do_not_log(self):
-        # the default, when _blur_usage is None, will log to twistd.log
-        t = Transit(blur_usage=60, usage_logfile=None, stats_file=None)
-        with mock.patch("twisted.python.log.msg") as m:
+        with mock.patch("time.time", return_value=457):
             t.recordUsage(started=123, result="happy", total_bytes=100,
                           total_time=10, waiting_time=2)
-        self.assertEqual(m.mock_calls, [])
+        self.assertEqual(db.execute("SELECT * FROM `usage`").fetchall(),
+                         [dict(result="happy", started=123,
+                               total_bytes=100, total_time=10, waiting_time=2),
+                          ])
+        self.assertEqual(db.execute("SELECT * FROM `current`").fetchone(),
+                         dict(rebooted=456, updated=457,
+                              incomplete_bytes=0,
+                              waiting=0, connected=0))
+
+        with mock.patch("time.time", return_value=458):
+            t.recordUsage(started=150, result="errory", total_bytes=200,
+                          total_time=11, waiting_time=3)
+        self.assertEqual(db.execute("SELECT * FROM `usage`").fetchall(),
+                         [dict(result="happy", started=123,
+                               total_bytes=100, total_time=10, waiting_time=2),
+                          dict(result="errory", started=150,
+                               total_bytes=200, total_time=11, waiting_time=3),
+                          ])
+        self.assertEqual(db.execute("SELECT * FROM `current`").fetchone(),
+                         dict(rebooted=456, updated=458,
+                              incomplete_bytes=0,
+                              waiting=0, connected=0))
+
+        with mock.patch("time.time", return_value=459):
+            t.timerUpdateStats()
+        self.assertEqual(db.execute("SELECT * FROM `current`").fetchone(),
+                         dict(rebooted=456, updated=459,
+                              incomplete_bytes=0,
+                              waiting=0, connected=0))
+
+    def test_no_db(self):
+        t = Transit(blur_usage=None, log_file=None, usage_db=None)
+
+        t.recordUsage(started=123, result="happy", total_bytes=100,
+                      total_time=10, waiting_time=2)
+        t.timerUpdateStats()
+
+class LogToStdout(unittest.TestCase):
+    def test_log(self):
+        # emit lines of JSON to log_file, if set
+        log_file = io.StringIO()
+        t = Transit(blur_usage=None, log_file=log_file, usage_db=None)
+        t.recordUsage(started=123, result="happy", total_bytes=100,
+                      total_time=10, waiting_time=2)
+        self.assertEqual(json.loads(log_file.getvalue()),
+                         {"started": 123, "total_time": 10,
+                          "waiting_time": 2, "total_bytes": 100,
+                          "mood": "happy"})
+
+    def test_log_blurred(self):
+        # if blurring is enabled, timestamps should be rounded to the
+        # requested amount, and sizes should be rounded up too
+        log_file = io.StringIO()
+        t = Transit(blur_usage=60, log_file=log_file, usage_db=None)
+        t.recordUsage(started=123, result="happy", total_bytes=11999,
+                      total_time=10, waiting_time=2)
+        self.assertEqual(json.loads(log_file.getvalue()),
+                         {"started": 120, "total_time": 10,
+                          "waiting_time": 2, "total_bytes": 20000,
+                          "mood": "happy"})
+
+    def test_do_not_log(self):
+        t = Transit(blur_usage=60, log_file=None, usage_db=None)
+        t.recordUsage(started=123, result="happy", total_bytes=11999,
+                      total_time=10, waiting_time=2)

@@ -1,6 +1,8 @@
+import sys
 from . import transit_server
 from twisted.internet import reactor
 from twisted.python import usage
+from twisted.application.service import MultiService
 from twisted.application.internet import (TimerService,
                                           StreamServerEndpointService)
 from twisted.internet import endpoints
@@ -92,10 +94,11 @@ class Options(usage.Options):
 
 def makeService(config, reactor=reactor):
     ep = endpoints.serverFromString(reactor, config["port"]) # to listen
+    log_file = sys.stdout if config["log-stdout"] else None
     f = transit_server.Transit(blur_usage=config["blur-usage"],
-                               log_stdout=config["log-stdout"],
+                               log_file=log_file,
                                usage_db=config["usage-db"])
-    parent = service.MultiService()
+    parent = MultiService()
     StreamServerEndpointService(ep, f).setServiceParent(parent)
-    TimerService(5.0, f.timerUpdateStats).setServiceParent(parent)
+    TimerService(5*60.0, f.timerUpdateStats).setServiceParent(parent)
     return parent

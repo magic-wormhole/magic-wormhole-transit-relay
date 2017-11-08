@@ -9,12 +9,12 @@ class DBError(Exception):
     pass
 
 def get_schema(version):
-    schema_bytes = resource_string("wormhole.server",
+    schema_bytes = resource_string("wormhole_transit_relay",
                                    "db-schemas/v%d.sql" % version)
     return schema_bytes.decode("utf-8")
 
 def get_upgrader(new_version):
-    schema_bytes = resource_string("wormhole.server",
+    schema_bytes = resource_string("wormhole_transit_relay",
                                    "db-schemas/upgrade-to-v%d.sql" % new_version)
     return schema_bytes.decode("utf-8")
 

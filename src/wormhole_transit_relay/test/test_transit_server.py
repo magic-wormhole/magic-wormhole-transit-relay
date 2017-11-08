@@ -298,3 +298,34 @@ class Transit(ServerBase, unittest.TestCase):
         self.assertEqual(a1.data, exp)
 
         a1.transport.loseConnection()
+
+    @defer.inlineCallbacks
+    def test_impatience_new2(self):
+        ep = clientFromString(reactor, self.transit)
+        a1 = yield connectProtocol(ep, Accumulator())
+        # For full coverage, we need dataReceived to see a particular framing
+        # of these two pieces of data, and ITCPTransport doesn't have flush()
+        # (which probably wouldn't work anyways). For now, force a 100ms
+        # stall between the two writes. I tried setTcpNoDelay(True) but it
+        # didn't seem to help without the stall. The long-term fix is to
+        # rewrite dataReceived() to remove the multiple "impatient"
+        # codepaths, deleting the particular clause that this test exercises,
+        # then remove this test.
+
+        token1 = b"\x00"*32
+        side1 = b"\x01"*8
+        # sending too many bytes is impatience.
+        a1.transport.write(b"please relay " + hexlify(token1) +
+                           b" for side " + hexlify(side1) + b"\n")
+
+        d = defer.Deferred()
+        reactor.callLater(0.1, d.callback, None)
+        yield d
+
+        a1.transport.write(b"NOWNOWNOW")
+
+        exp = b"impatient\n"
+        yield a1.waitForBytes(len(exp))
+        self.assertEqual(a1.data, exp)
+
+        a1.transport.loseConnection()

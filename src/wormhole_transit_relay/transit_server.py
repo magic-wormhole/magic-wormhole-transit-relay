@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-import os, re, time, json
+import re, time, json
 from twisted.python import log
 from twisted.internet import protocol
 from .database import get_db
@@ -221,13 +221,15 @@ class Transit(protocol.ServerFactory):
     MAXTIME = 60*SECONDS
     protocol = TransitConnection
 
-    def __init__(self, blur_usage, log_stdout, usage_db):
+    def __init__(self, blur_usage, log_file, usage_db):
         self._blur_usage = blur_usage
+        self._log_requests = blur_usage is None
         self._debug_log = False
-        self._log_stdout = log_stdout
+        self._log_file = log_file
         self._db = None
         if usage_db:
             self._db = get_db(usage_db)
+        self._rebooted = time.time()
         # we don't track TransitConnections until they submit a token
         self._pending_requests = {} # token -> set((side, TransitConnection))
         self._active_connections = set() # TransitConnection
@@ -285,16 +287,15 @@ class Transit(protocol.ServerFactory):
         if self._blur_usage:
             started = self._blur_usage * (started // self._blur_usage)
             total_bytes = blur_size(total_bytes)
-        if self._log_stdout:
+        if self._log_file is not None:
             data = {"started": started,
                     "total_time": total_time,
                     "waiting_time": waiting_time,
                     "total_bytes": total_bytes,
                     "mood": result,
                     }
-            sys.stdout.write(json.dumps(data))
-            sys.stdout.write("\n")
-            sys.stdout.flush()
+            self._log_file.write(json.dumps(data)+"\n")
+            self._log_file.flush()
         if self._db:
             self._db.execute("INSERT INTO `usage`"
                              " (`started`, `total_time`, `waiting_time`,"
@@ -306,26 +307,27 @@ class Transit(protocol.ServerFactory):
             self._db.commit()
 
     def timerUpdateStats(self):
-        self._update_stats()
-        self._db.commit()
+        if self._db:
+            self._update_stats()
+            self._db.commit()
 
     def _update_stats(self):
         # current status: should be zero when idle
-        reboot = self._reboot
-        last_update = time.time()
+        rebooted = self._rebooted
+        updated = time.time()
         connected = len(self._active_connections) / 2
         # TODO: when a connection is half-closed, len(active) will be odd. a
         # moment later (hopefully) the other side will disconnect, but
         # _update_stats isn't updated until later.
-        waiting = len(self._pending_tokens)
+        waiting = len(self._pending_requests)
         # "waiting" doesn't count multiple parallel connections from the same
         # side
         incomplete_bytes = sum(tc._total_sent
                                for tc in self._active_connections)
         self._db.execute("DELETE FROM `current`")
         self._db.execute("INSERT INTO `current`"
-                         " (`reboot`, `last_update`, `connected`, `waiting`,"
+                         " (`rebooted`, `updated`, `connected`, `waiting`,"
                          "  `incomplete_bytes`)"
                          " VALUES (?, ?, ?, ?, ?)",
-                         (reboot, last_update, connected, waiting,
+                         (rebooted, updated, connected, waiting,
                           incomplete_bytes))
