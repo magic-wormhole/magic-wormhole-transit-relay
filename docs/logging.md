@@ -12,12 +12,14 @@ timestamps or exact transfer sizes. The ``--blur-usage=`` option enables
 this, and it takes an integer value (in seconds) to specify the desired time
 window.
 
-## Logging JSON to stdout
+## Logging JSON Upon Each Connection
 
-If --log-stdout is provided, a line will be written to stdout after each
-connection is done. This line will be a complete JSON object (starting with
-``{``, ending with ``}\n``, and containing no internal newlines). The keys
-will be:
+If --log-fd is provided, a line will be written to the given (numeric) file
+descriptor after each connection is done. These events could be delivered to
+a comprehensive logging system like XXX for offline analysis.
+
+Each line will be a complete JSON object (starting with ``{``, ending with
+``}\n``, and containing no internal newlines). The keys will be:
 
 * ``started``: number, seconds since epoch
 * ``total_time``: number, seconds from open to last close
@@ -30,7 +32,11 @@ means a second matching side never appeared (and thus ``waiting_time`` will
 be null). ``errory`` means the first side gave an invalid handshake.
 
 If --blur-usage= is provided, then ``started`` will be rounded to the given
-time interval, and ``total_bytes`` will be rounded as well.
+time interval, and ``total_bytes`` will be rounded to a fixed set of buckets:
+
+* file sizes less than 1MB: rounded to the next largest multiple of 10kB
+* less than 1GB: multiple of 1MB
+* 1GB or larger: multiple of 100MB
 
 ## Usage Database
 
@@ -77,5 +83,9 @@ the ``current`` table will be updated at least once every 5 minutes.
 
 If daemonized by twistd, the server will write ``twistd.pid`` and
 ``twistd.log`` files as usual. By default ``twistd.log`` will only contain
-startup, shutdown, and exception messages. Adding --log-stdout will add
-per-connection JSON lines to ``twistd.log``.
+startup, shutdown, and exception messages.
+
+Setting ``--log-fd=1`` (file descriptor 1 is always stdout) will cause the
+per-connection JSON lines to be interleaved with any messages sent to
+Twisted's logging system. It may be better to use a different file
+descriptor.

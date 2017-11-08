@@ -1,4 +1,4 @@
-import sys
+import os
 from . import transit_server
 from twisted.internet import reactor
 from twisted.python import usage
@@ -14,15 +14,13 @@ glues the two TCP sockets together.
 """
 
 class Options(usage.Options):
-    synopsis = "[--port=] [--log-stdout] [--blur-usage=] [--usage-db=]"
+    synopsis = "[--port=] [--log-fd] [--blur-usage=] [--usage-db=]"
     longdesc = LONGDESC
 
-    optFlags = {
-        ("log-stdout", None, "write JSON usage logs to stdout"),
-        }
     optParameters = [
         ("port", "p", "tcp:4001", "endpoint to listen on"),
         ("blur-usage", None, None, "blur timestamps and data sizes in logs"),
+        ("log-fd", None, None, "write JSON usage logs to this file descriptor"),
         ("usage-db", None, None, "record usage data (SQLite)"),
         ]
 
@@ -32,7 +30,9 @@ class Options(usage.Options):
 
 def makeService(config, reactor=reactor):
     ep = endpoints.serverFromString(reactor, config["port"]) # to listen
-    log_file = sys.stdout if config["log-stdout"] else None
+    log_file = (os.fdopen(int(config["log-fd"]), "w")
+                if config["log-fd"] is not None
+                else None)
     f = transit_server.Transit(blur_usage=config["blur-usage"],
                                log_file=log_file,
                                usage_db=config["usage-db"])
