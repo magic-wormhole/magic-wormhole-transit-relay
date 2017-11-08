@@ -83,3 +83,22 @@ class Create(unittest.TestCase):
         latest_text = dump_db(db)
         self.assertIn("CREATE TABLE", latest_text)
 
+class Open(unittest.TestCase):
+    def test_open(self):
+        basedir = self.mktemp()
+        os.mkdir(basedir)
+        fn = os.path.join(basedir, "created.db")
+        db1 = database.create_db(fn)
+        latest_text = dump_db(db1)
+        self.assertIn("CREATE TABLE", latest_text)
+        db2 = database.open_existing_db(fn)
+        self.assertIn("CREATE TABLE", dump_db(db2))
+
+    def test_doesnt_exist(self):
+        basedir = self.mktemp()
+        os.mkdir(basedir)
+        fn = os.path.join(basedir, "created.db")
+        with self.assertRaises(database.DBDoesntExist):
+            database.open_existing_db(fn)
+
+

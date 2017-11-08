@@ -116,6 +116,15 @@ def get_db(dbfile, target_version=TARGET_VERSION):
 
     return db
 
+class DBDoesntExist(Exception):
+    pass
+
+def open_existing_db(dbfile):
+    assert dbfile != ":memory:"
+    if not os.path.exists(dbfile):
+        raise DBDoesntExist()
+    return _open_db_connection(dbfile)
+
 class DBAlreadyExists(Exception):
     pass
 
