@@ -224,6 +224,11 @@ class Transit(protocol.ServerFactory):
     def __init__(self, blur_usage, log_file, usage_db):
         self._blur_usage = blur_usage
         self._log_requests = blur_usage is None
+        if self._blur_usage:
+            log.msg("blurring access times to %d seconds" % self._blur_usage)
+            log.msg("not logging Transit connections to Twisted log")
+        else:
+            log.msg("not blurring access times")
         self._debug_log = False
         self._log_file = log_file
         self._db = None

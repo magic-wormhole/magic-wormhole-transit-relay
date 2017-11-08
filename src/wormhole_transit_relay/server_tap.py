@@ -27,7 +27,7 @@ class Options(usage.Options):
         ]
 
     def opt_blur_usage(self, arg):
-        self["blur_usage"] = int(arg)
+        self["blur-usage"] = int(arg)
 
 
 def makeService(config, reactor=reactor):
