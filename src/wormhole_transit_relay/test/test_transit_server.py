@@ -232,7 +232,7 @@ class Transit(ServerBase, unittest.TestCase):
         a2.transport.loseConnection()
 
     @defer.inlineCallbacks
-    def test_bad_handshake(self):
+    def test_bad_handshake_old(self):
         ep = clientFromString(reactor, self.transit)
         a1 = yield connectProtocol(ep, Accumulator())
 
@@ -240,6 +240,49 @@ class Transit(ServerBase, unittest.TestCase):
         # the server waits for the exact number of bytes in the expected
         # handshake message. to trigger "bad handshake", we must match.
         a1.transport.write(b"please DELAY " + hexlify(token1) + b"\n")
+
+        exp = b"bad handshake\n"
+        yield a1.waitForBytes(len(exp))
+        self.assertEqual(a1.data, exp)
+
+        a1.transport.loseConnection()
+
+    @defer.inlineCallbacks
+    def test_bad_handshake_old_slow(self):
+        ep = clientFromString(reactor, self.transit)
+        a1 = yield connectProtocol(ep, Accumulator())
+
+        a1.transport.write(b"please DELAY ")
+        # As in test_impatience_new_slow, the current state machine has code
+        # that can only be reached if we insert a stall here, so dataReceived
+        # gets called twice. Hopefully we can delete this test once
+        # dataReceived is refactored to remove that state.
+        d = defer.Deferred()
+        reactor.callLater(0.1, d.callback, None)
+        yield d
+
+        token1 = b"\x00"*32
+        # the server waits for the exact number of bytes in the expected
+        # handshake message. to trigger "bad handshake", we must match.
+        a1.transport.write(hexlify(token1) + b"\n")
+
+        exp = b"bad handshake\n"
+        yield a1.waitForBytes(len(exp))
+        self.assertEqual(a1.data, exp)
+
+        a1.transport.loseConnection()
+
+    @defer.inlineCallbacks
+    def test_bad_handshake_new(self):
+        ep = clientFromString(reactor, self.transit)
+        a1 = yield connectProtocol(ep, Accumulator())
+
+        token1 = b"\x00"*32
+        side1 = b"\x01"*8
+        # the server waits for the exact number of bytes in the expected
+        # handshake message. to trigger "bad handshake", we must match.
+        a1.transport.write(b"please DELAY " + hexlify(token1) +
+                           b" for side " + hexlify(side1) + b"\n")
 
         exp = b"bad handshake\n"
         yield a1.waitForBytes(len(exp))
@@ -300,7 +343,7 @@ class Transit(ServerBase, unittest.TestCase):
         a1.transport.loseConnection()
 
     @defer.inlineCallbacks
-    def test_impatience_new2(self):
+    def test_impatience_new_slow(self):
         ep = clientFromString(reactor, self.transit)
         a1 = yield connectProtocol(ep, Accumulator())
         # For full coverage, we need dataReceived to see a particular framing
