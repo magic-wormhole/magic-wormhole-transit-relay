@@ -59,3 +59,27 @@ class Get(unittest.TestCase):
             with open("new.sql","w") as f: f.write(latest_text)
             # check with "diff -u _trial_temp/up.sql _trial_temp/new.sql"
             self.assertEqual(dbA_text, latest_text)
+
+class Create(unittest.TestCase):
+    def test_memory(self):
+        db = database.create_db(":memory:")
+        latest_text = dump_db(db)
+        self.assertIn("CREATE TABLE", latest_text)
+
+    def test_preexisting(self):
+        basedir = self.mktemp()
+        os.mkdir(basedir)
+        fn = os.path.join(basedir, "preexisting.db")
+        with open(fn, "w"):
+            pass
+        with self.assertRaises(database.DBAlreadyExists):
+            database.create_db(fn)
+
+    def test_create(self):
+        basedir = self.mktemp()
+        os.mkdir(basedir)
+        fn = os.path.join(basedir, "created.db")
+        db = database.create_db(fn)
+        latest_text = dump_db(db)
+        self.assertIn("CREATE TABLE", latest_text)
+

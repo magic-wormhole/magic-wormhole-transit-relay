@@ -116,6 +116,23 @@ def get_db(dbfile, target_version=TARGET_VERSION):
 
     return db
 
+class DBAlreadyExists(Exception):
+    pass
+
+def create_db(dbfile):
+    """Create the given db file. Refuse to touch a pre-existing file.
+
+    This is meant for use by migration tools, to create the output target"""
+
+    if dbfile == ":memory:":
+        db = _open_db_connection(dbfile)
+        _initialize_db_schema(db, TARGET_VERSION)
+    elif os.path.exists(dbfile):
+        raise DBAlreadyExists()
+    else:
+        db = _atomic_create_and_initialize_db(dbfile, TARGET_VERSION)
+    return db
+
 def dump_db(db):
     # to let _iterdump work, we need to restore the original row factory
     orig = db.row_factory
