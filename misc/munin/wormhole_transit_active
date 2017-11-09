@@ -10,12 +10,15 @@ env.usagedb /path/to/your/wormhole/server/usage.sqlite
 import os, sys, time, sqlite3
 
 CONFIG = """\
-graph_title Magic-Wormhole Transit Usage (all time)
-graph_vlabel Bytes Since DB Creation
+graph_title Magic-Wormhole Transit Active Channels
+graph_vlabel Channels
 graph_category network
-bytes.label Transit Bytes
-bytes.draw LINE1
-bytes.type GAUGE
+waiting.label Transit Waiting
+waiting.draw LINE1
+waiting.type GAUGE
+connected.label Transit Connected
+connected.draw LINE1
+connected.type GAUGE
 """
 
 if len(sys.argv) > 1 and sys.argv[1] == "config":
@@ -27,9 +30,10 @@ assert os.path.exists(dbfile)
 db = sqlite3.connect(dbfile)
 
 MINUTE = 60.0
-rebooted = db.execute("SELECT `rebooted` FROM `current`").fetchone()[0]
+rebooted,waiting,connected = db.execute("SELECT `rebooted`,`waiting`,`connected`"
+                                        " FROM `current`").fetchone()
 if time.time() > rebooted + 5*MINUTE:
     sys.exit(1) # expired
 
-value = db.execute("SELECT SUM(`total_bytes`) FROM `usage`").fetchone()[0]
-print("bytes.value", value)
+print("waiting.value", waiting)
+print("connected.value", connected)

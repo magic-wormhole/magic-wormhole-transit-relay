@@ -4,10 +4,10 @@
 Use the following in /etc/munin/plugin-conf.d/wormhole :
 
 [wormhole_*]
-env.serverdir /path/to/your/wormhole/server
+env.usagedb /path/to/your/wormhole/server/usage.sqlite
 """
 
-import os, sys, time, json
+import os, sys, time, sqlite3
 
 CONFIG = """\
 graph_title Magic-Wormhole Transit Usage (since reboot)
@@ -19,15 +19,18 @@ bytes.type GAUGE
 """
 
 if len(sys.argv) > 1 and sys.argv[1] == "config":
-    print CONFIG.rstrip()
+    print(CONFIG.rstrip())
     sys.exit(0)
 
-serverdir = os.environ["serverdir"]
-fn = os.path.join(serverdir, "stats.json")
-with open(fn) as f:
-    data = json.load(f)
-if time.time() > data["valid_until"]:
+dbfile = os.environ["usagedb"]
+assert os.path.exists(dbfile)
+db = sqlite3.connect(dbfile)
+
+MINUTE = 60.0
+rebooted = db.execute("SELECT `rebooted` FROM `current`").fetchone()[0]
+if time.time() > rebooted + 5*MINUTE:
     sys.exit(1) # expired
 
-t = data["transit"]["since_reboot"]
-print "bytes.value", t["bytes"]
+value = db.execute("SELECT SUM(`total_bytes`) FROM `usage` WHERE `started` > ?",
+                   (rebooted,)).fetchone()[0]
+print("bytes.value", value)
