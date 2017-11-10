@@ -30,9 +30,9 @@ assert os.path.exists(dbfile)
 db = sqlite3.connect(dbfile)
 
 MINUTE = 60.0
-rebooted,waiting,connected = db.execute("SELECT `rebooted`,`waiting`,`connected`"
-                                        " FROM `current`").fetchone()
-if time.time() > rebooted + 5*MINUTE:
+updated,waiting,connected = db.execute("SELECT `updated`,`waiting`,`connected`"
+                                       " FROM `current`").fetchone()
+if time.time() > updated + 5*MINUTE:
     sys.exit(1) # expired
 
 print("waiting.value", waiting)
