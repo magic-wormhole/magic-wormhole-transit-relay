@@ -13,10 +13,10 @@ def get_schema(version):
                                    "db-schemas/v%d.sql" % version)
     return schema_bytes.decode("utf-8")
 
-def get_upgrader(new_version):
-    schema_bytes = resource_string("wormhole_transit_relay",
-                                   "db-schemas/upgrade-to-v%d.sql" % new_version)
-    return schema_bytes.decode("utf-8")
+## def get_upgrader(new_version):
+##     schema_bytes = resource_string("wormhole_transit_relay",
+##                                    "db-schemas/upgrade-to-v%d.sql" % new_version)
+##     return schema_bytes.decode("utf-8")
 
 TARGET_VERSION = 1
 
@@ -51,9 +51,11 @@ def _open_db_connection(dbfile):
     """
     try:
         db = sqlite3.connect(dbfile)
-    except (EnvironmentError, sqlite3.OperationalError) as e:
+        _initialize_db_connection(db)
+    except (EnvironmentError, sqlite3.OperationalError, sqlite3.DatabaseError) as e:
+        # this indicates that the file is not a compatible database format.
+        # Perhaps it was created with an old version, or it might be junk.
         raise DBError("Unable to create/open db file %s: %s" % (dbfile, e))
-    _initialize_db_connection(db)
     return db
 
 def _get_temporary_dbfile(dbfile):
@@ -91,25 +93,20 @@ def get_db(dbfile, target_version=TARGET_VERSION):
     else:
         db = _atomic_create_and_initialize_db(dbfile, target_version)
 
-    try:
-        version = db.execute("SELECT version FROM version").fetchone()["version"]
-    except sqlite3.DatabaseError as e:
-        # this indicates that the file is not a compatible database format.
-        # Perhaps it was created with an old version, or it might be junk.
-        raise DBError("db file is unusable: %s" % e)
+    version = db.execute("SELECT version FROM version").fetchone()["version"]
 
-    while version < target_version:
-        log.msg(" need to upgrade from %s to %s" % (version, target_version))
-        try:
-            upgrader = get_upgrader(version+1)
-        except ValueError: # ResourceError??
-            log.msg(" unable to upgrade %s to %s" % (version, version+1))
-            raise DBError("Unable to upgrade %s to version %s, left at %s"
-                          % (dbfile, version+1, version))
-        log.msg(" executing upgrader v%s->v%s" % (version, version+1))
-        db.executescript(upgrader)
-        db.commit()
-        version = version+1
+    ## while version < target_version:
+    ##     log.msg(" need to upgrade from %s to %s" % (version, target_version))
+    ##     try:
+    ##         upgrader = get_upgrader(version+1)
+    ##     except ValueError: # ResourceError??
+    ##         log.msg(" unable to upgrade %s to %s" % (version, version+1))
+    ##         raise DBError("Unable to upgrade %s to version %s, left at %s"
+    ##                       % (dbfile, version+1, version))
+    ##     log.msg(" executing upgrader v%s->v%s" % (version, version+1))
+    ##     db.executescript(upgrader)
+    ##     db.commit()
+    ##     version = version+1
 
     if version != target_version:
         raise DBError("Unable to handle db version %s" % version)

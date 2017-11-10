@@ -3,7 +3,7 @@ import os
 from twisted.python import filepath
 from twisted.trial import unittest
 from .. import database
-from ..database import get_db, TARGET_VERSION, dump_db
+from ..database import get_db, TARGET_VERSION, dump_db, DBError
 
 class Get(unittest.TestCase):
     def test_create_default(self):
@@ -12,6 +12,41 @@ class Get(unittest.TestCase):
         rows = db.execute("SELECT * FROM version").fetchall()
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["version"], TARGET_VERSION)
+
+    def test_open_existing_file(self):
+        basedir = self.mktemp()
+        os.mkdir(basedir)
+        fn = os.path.join(basedir, "normal.db")
+        db = get_db(fn)
+        rows = db.execute("SELECT * FROM version").fetchall()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["version"], TARGET_VERSION)
+        db2 = get_db(fn)
+        rows = db2.execute("SELECT * FROM version").fetchall()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["version"], TARGET_VERSION)
+
+    def test_open_bad_version(self):
+        basedir = self.mktemp()
+        os.mkdir(basedir)
+        fn = os.path.join(basedir, "old.db")
+        db = get_db(fn)
+        db.execute("UPDATE version SET version=999")
+        db.commit()
+
+        with self.assertRaises(DBError) as e:
+            get_db(fn)
+        self.assertIn("Unable to handle db version 999", str(e.exception))
+
+    def test_open_corrupt(self):
+        basedir = self.mktemp()
+        os.mkdir(basedir)
+        fn = os.path.join(basedir, "corrupt.db")
+        with open(fn, "wb") as f:
+            f.write(b"I am not a database")
+        with self.assertRaises(DBError) as e:
+            get_db(fn)
+        self.assertIn("not a database", str(e.exception))
 
     def test_failed_create_allows_subsequent_create(self):
         patch = self.patch(database, "get_schema", lambda version: b"this is a broken schema")
