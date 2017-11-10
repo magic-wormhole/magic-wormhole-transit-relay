@@ -70,7 +70,15 @@ into a logfile:
 2017-11-09T17:07:28-0800 [-] Transit starting on 4001
 2017-11-09T17:07:28-0800 [wormhole_transit_relay.transit_server.Transit#info] Starting factory <wormhole_transit_relay.transit_server.Transit object at 0x7f01164b4550>
 ...
-%
+% cat twistd.pid; echo
+18985
+```
+
+To shut down a ``twistd``-based server, you'll need to look in the
+``twistd.pid`` file for the process id, and kill it:
+
+```
+% kill `cat twistd.pid`
 ```
 
 To start the server each time the host reboots, you might use a crontab
