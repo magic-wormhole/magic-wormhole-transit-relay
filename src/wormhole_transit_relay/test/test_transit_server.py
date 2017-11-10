@@ -31,7 +31,7 @@ class Accumulator(protocol.Protocol):
             self._wait.errback(RuntimeError("closed"))
         self._disconnect.callback(None)
 
-class Transit(ServerBase, unittest.TestCase):
+class _Transit:
     def test_blur_size(self):
         blur = transit_server.blur_size
         self.failUnlessEqual(blur(0), 0)
@@ -372,3 +372,9 @@ class Transit(ServerBase, unittest.TestCase):
         self.assertEqual(a1.data, exp)
 
         a1.transport.loseConnection()
+
+class TransitWithLogs(_Transit, ServerBase, unittest.TestCase):
+    log_requests = True
+
+class TransitWithoutLogs(_Transit, ServerBase, unittest.TestCase):
+    log_requests = False

@@ -4,10 +4,17 @@ from twisted.internet.defer import inlineCallbacks
 from ..transit_server import Transit
 
 class ServerBase:
+    log_requests = False
+
     @inlineCallbacks
     def setUp(self):
         self._lp = None
-        yield self._setup_relay()
+        if self.log_requests:
+            blur_usage = None
+        else:
+            blur_usage = 60.0
+        yield self._setup_relay(blur_usage=blur_usage)
+        self._transit_server._debug_log = self.log_requests
 
     @inlineCallbacks
     def _setup_relay(self, blur_usage=None, log_file=None, usage_db=None):
