@@ -14,6 +14,7 @@ setup(name="magic-wormhole-transit-relay",
       package_dir={"": "src"},
       packages=["wormhole_transit_relay",
                 "wormhole_transit_relay.test",
+                "twisted.plugins",
                 ],
       package_data={"wormhole_transit_relay": ["db-schemas/*.sql"]},
       install_requires=[

@@ -3,5 +3,6 @@ include src/wormhole_transit_relay/_version.py
 include LICENSE README.md NEWS.md
 recursive-include docs *.md *.rst *.dot
 include .coveragerc tox.ini
-include misc/munin/wormhole_transit
-include misc/munin/wormhole_transit_alltime
+include misc/*.py
+include misc/munin/wormhole_transit*
+
