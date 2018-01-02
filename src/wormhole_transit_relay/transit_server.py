@@ -283,7 +283,6 @@ class Transit(protocol.ServerFactory):
     def transitFailed(self, p):
         if self._debug_log:
             log.msg("transitFailed %r" % p)
-        pass
 
     def recordUsage(self, started, result, total_bytes,
                     total_time, waiting_time):
