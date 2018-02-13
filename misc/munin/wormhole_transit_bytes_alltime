@@ -32,5 +32,5 @@ updated = db.execute("SELECT `updated` FROM `current`").fetchone()[0]
 if time.time() > updated + 5*MINUTE:
     sys.exit(1) # expired
 
-value = db.execute("SELECT SUM(`total_bytes`) FROM `usage`").fetchone()[0]
+value = db.execute("SELECT SUM(`total_bytes`) FROM `usage`").fetchone()[0] or 0
 print("bytes.value", value)
