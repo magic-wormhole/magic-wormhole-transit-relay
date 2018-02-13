@@ -312,6 +312,17 @@ class Transit(protocol.ServerFactory):
         if self._debug_log:
             log.msg("transitFinished %s" % (description,))
         self._active_connections.discard(tc)
+        # we could update the usage database "current" row immediately, or wait
+        # until the 5-minute timer updates it. If we update it now, just after
+        # losing a connection, we should probably also update it just after
+        # establishing one (at the end of connection_got_token). For now I'm
+        # going to omit these, but maybe someday we'll turn them both on. The
+        # consequence is that a manual execution of the munin scripts ("munin
+        # run wormhole_transit_active") will give the wrong value just after a
+        # connect/disconnect event. Actual munin graphs should accurately
+        # report connections that last longer than the 5-minute sampling
+        # window, which is what we actually care about.
+        #self.timerUpdateStats()
 
     def recordUsage(self, started, result, total_bytes,
                     total_time, waiting_time):
