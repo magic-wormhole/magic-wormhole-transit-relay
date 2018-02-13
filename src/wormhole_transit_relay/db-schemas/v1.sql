@@ -24,6 +24,7 @@ CREATE TABLE `usage`
  -- transit moods:
  --  "errory": one side gave the wrong handshake
  --  "lonely": good handshake, but the other side never showed up
+ --  "redundant": good handshake, abandoned in favor of different connection
  --  "happy": both sides gave correct handshake
 );
 CREATE INDEX `usage_started_index` ON `usage` (`started`);

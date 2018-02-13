@@ -1,5 +1,6 @@
 from __future__ import print_function, unicode_literals
 import re, time, json
+from collections import defaultdict
 from twisted.python import log
 from twisted.internet import protocol
 from .database import get_db
@@ -28,8 +29,8 @@ class TransitConnection(protocol.Protocol):
         self._got_side = False
         self._token_buffer = b""
         self._sent_ok = False
+        self._mood = None
         self._buddy = None
-        self._had_buddy = False
         self._total_sent = 0
 
     def describeToken(self):
@@ -62,7 +63,7 @@ class TransitConnection(protocol.Protocol):
             self.transport.write(b"impatient\n")
             if self._log_requests:
                 log.msg("transit impatience failure")
-            return self.disconnect() # impatience yields failure
+            return self.disconnect_error() # impatience yields failure
 
         # else this should be (part of) the token
         self._token_buffer += data
@@ -79,7 +80,7 @@ class TransitConnection(protocol.Protocol):
                 self.transport.write(b"impatient\n")
                 if self._log_requests:
                     log.msg("transit impatience failure")
-                return self.disconnect() # impatience yields failure
+                return self.disconnect_error() # impatience yields failure
             return self._got_handshake(token, None)
         (new, handshake_len, token, side) = self._check_new_handshake(buf)
         assert new in ("yes", "waiting", "no")
@@ -88,13 +89,13 @@ class TransitConnection(protocol.Protocol):
                 self.transport.write(b"impatient\n")
                 if self._log_requests:
                     log.msg("transit impatience failure")
-                return self.disconnect() # impatience yields failure
+                return self.disconnect_error() # impatience yields failure
             return self._got_handshake(token, side)
         if (old == "no" and new == "no"):
             self.transport.write(b"bad handshake\n")
             if self._log_requests:
                 log.msg("transit handshake failure")
-            return self.disconnect() # incorrectness yields failure
+            return self.disconnect_error() # incorrectness yields failure
         # else we'll keep waiting
 
     def _check_old_handshake(self, buf):
@@ -132,11 +133,12 @@ class TransitConnection(protocol.Protocol):
     def _got_handshake(self, token, side):
         self._got_token = token
         self._got_side = side
+        self._mood = "lonely" # until buddy connects
         self.factory.connection_got_token(token, side, self)
 
     def buddy_connected(self, them):
         self._buddy = them
-        self._had_buddy = True
+        self._mood = "happy"
         self.transport.write(b"ok\n")
         self._sent_ok = True
         # Connect the two as a producer/consumer pair. We use streaming=True,
@@ -150,43 +152,71 @@ class TransitConnection(protocol.Protocol):
         if self._log_requests:
             log.msg("buddy_disconnected %s" % self.describeToken())
         self._buddy = None
+        self._mood = "jilted"
+        self.transport.loseConnection()
+
+    def disconnect_error(self):
+        # we haven't finished the handshake, so there are no tokens tracking
+        # us
+        self._mood = "errory"
+        self.transport.loseConnection()
+        if self.factory._debug_log:
+            log.msg("transitFailed %r" % self)
+
+    def disconnect_redundant(self):
+        # this is called if a buddy connected and we were found unnecessary.
+        # Any token-tracking cleanup will have been done before we're called.
+        self._mood = "redundant"
         self.transport.loseConnection()
 
     def connectionLost(self, reason):
+        finished = time.time()
+        total_time = finished - self._started
+
+        # Record usage. There are seven cases:
+        # * n1: the handshake failed, not a real client (errory)
+        # * n2: real client disconnected before any buddy appeared (lonely)
+        # * n3: real client closed as redundant after buddy appears (redundant)
+        # * n4: real client connected first, buddy closes first (jilted)
+        # * n5: real client connected first, buddy close last (happy)
+        # * n6: real client connected last, buddy closes first (jilted)
+        # * n7: real client connected last, buddy closes last (happy)
+
+        # * non-connected clients (1,2,3) always write a usage record
+        # * for connected clients, whoever disconnects first gets to write the
+        #   usage record (5, 7). The last disconnect doesn't write a record.
+
+        if self._mood == "errory": # 1
+            assert not self._buddy
+            self.factory.recordUsage(self._started, "errory", 0,
+                                     total_time, None)
+        elif self._mood == "redundant": # 3
+            assert not self._buddy
+            self.factory.recordUsage(self._started, "redundant", 0,
+                                     total_time, None)
+        elif self._mood == "jilted": # 4 or 6
+            # we were connected, but our buddy hung up on us. They record the
+            # usage event, we do not
+            pass
+        elif self._mood == "lonely": # 2
+            assert not self._buddy
+            self.factory.recordUsage(self._started, "lonely", 0,
+                                     total_time, None)
+        else: # 5 or 7
+            # we were connected, we hung up first. We record the event.
+            assert self._mood == "happy", self._mood
+            assert self._buddy
+            starts = [self._started, self._buddy._started]
+            total_time = finished - min(starts)
+            waiting_time = max(starts) - min(starts)
+            total_bytes = self._total_sent + self._buddy._total_sent
+            self.factory.recordUsage(self._started, "happy", total_bytes,
+                                     total_time, waiting_time)
+
         if self._buddy:
             self._buddy.buddy_disconnected()
         self.factory.transitFinished(self, self._got_token, self._got_side,
                                      self.describeToken())
-
-        # Record usage. There are four cases:
-        # * 1: we connected, never had a buddy
-        # * 2: we connected first, we disconnect before the buddy
-        # * 3: we connected first, buddy disconnects first
-        # * 4: buddy connected first, we disconnect before buddy
-        # * 5: buddy connected first, buddy disconnects first
-
-        # whoever disconnects first gets to write the usage record (1,2,4)
-
-        finished = time.time()
-        if not self._had_buddy: # 1
-            total_time = finished - self._started
-            self.factory.recordUsage(self._started, "lonely", 0,
-                                     total_time, None)
-        if self._had_buddy and self._buddy: # 2,4
-            total_bytes = self._total_sent + self._buddy._total_sent
-            starts = [self._started, self._buddy._started]
-            total_time = finished - min(starts)
-            waiting_time = max(starts) - min(starts)
-            self.factory.recordUsage(self._started, "happy", total_bytes,
-                                     total_time, waiting_time)
-
-    def disconnect(self):
-        self.transport.loseConnection()
-        self.factory.transitFailed(self)
-        finished = time.time()
-        total_time = finished - self._started
-        self.factory.recordUsage(self._started, "errory", 0,
-                                 total_time, None)
 
 class Transit(protocol.ServerFactory):
     # I manage pairs of simultaneous connections to a secondary TCP port,
@@ -236,12 +266,10 @@ class Transit(protocol.ServerFactory):
             self._db = get_db(usage_db)
         self._rebooted = time.time()
         # we don't track TransitConnections until they submit a token
-        self._pending_requests = {} # token -> set((side, TransitConnection))
+        self._pending_requests = defaultdict(set) # token -> set((side, TransitConnection))
         self._active_connections = set() # TransitConnection
 
     def connection_got_token(self, token, new_side, new_tc):
-        if token not in self._pending_requests:
-            self._pending_requests[token] = set()
         potentials = self._pending_requests[token]
         for old in potentials:
             (old_side, old_tc) = old
@@ -255,7 +283,12 @@ class Transit(protocol.ServerFactory):
                 # drop and stop tracking the rest
                 potentials.remove(old)
                 for (_, leftover_tc) in potentials:
-                    leftover_tc.disconnect() # TODO: not "errory"?
+                    # Don't record this as errory. It's just a spare connection
+                    # from the same side as a connection that got used. This
+                    # can happen if the connection hint contains multiple
+                    # addresses (we don't currently support those, but it'd
+                    # probably be useful in the future).
+                    leftover_tc.disconnect_redundant()
                 self._pending_requests.pop(token)
 
                 # glue the two ends together
@@ -272,17 +305,23 @@ class Transit(protocol.ServerFactory):
     def transitFinished(self, tc, token, side, description):
         if token in self._pending_requests:
             side_tc = (side, tc)
-            if side_tc in self._pending_requests[token]:
-                self._pending_requests[token].remove(side_tc)
+            self._pending_requests[token].discard(side_tc)
             if not self._pending_requests[token]: # set is now empty
                 del self._pending_requests[token]
         if self._debug_log:
             log.msg("transitFinished %s" % (description,))
         self._active_connections.discard(tc)
-
-    def transitFailed(self, p):
-        if self._debug_log:
-            log.msg("transitFailed %r" % p)
+        # we could update the usage database "current" row immediately, or wait
+        # until the 5-minute timer updates it. If we update it now, just after
+        # losing a connection, we should probably also update it just after
+        # establishing one (at the end of connection_got_token). For now I'm
+        # going to omit these, but maybe someday we'll turn them both on. The
+        # consequence is that a manual execution of the munin scripts ("munin
+        # run wormhole_transit_active") will give the wrong value just after a
+        # connect/disconnect event. Actual munin graphs should accurately
+        # report connections that last longer than the 5-minute sampling
+        # window, which is what we actually care about.
+        #self.timerUpdateStats()
 
     def recordUsage(self, started, result, total_bytes,
                     total_time, waiting_time):

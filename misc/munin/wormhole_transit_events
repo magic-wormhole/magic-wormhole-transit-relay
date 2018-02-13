@@ -11,15 +11,21 @@ from __future__ import print_function
 import os, sys, time, sqlite3
 
 CONFIG = """\
-graph_title Magic-Wormhole Transit Server Errors (since reboot)
+graph_title Magic-Wormhole Transit Server Events (since reboot)
 graph_vlabel Events Since Reboot
 graph_category network
+happy.label Happy
+happy.draw LINE1
+happy.type GAUGE
 errory.label Errory
 errory.draw LINE1
 errory.type GAUGE
 lonely.label Lonely
 lonely.draw LINE1
 lonely.type GAUGE
+redundant.label Redundant
+redundant.draw LINE1
+redundant.type GAUGE
 """
 
 if len(sys.argv) > 1 and sys.argv[1] == "config":
@@ -38,6 +44,13 @@ if time.time() > updated + 5*MINUTE:
 count = db.execute("SELECT COUNT() FROM `usage`"
                    " WHERE"
                 "  `started` > ? AND"
+                "  `result` = 'happy'",
+                (rebooted,)).fetchone()[0]
+print("happy.value", count)
+
+count = db.execute("SELECT COUNT() FROM `usage`"
+                   " WHERE"
+                "  `started` > ? AND"
                 "  `result` = 'errory'",
                 (rebooted,)).fetchone()[0]
 print("errory.value", count)
@@ -48,3 +61,10 @@ count = db.execute("SELECT COUNT() FROM `usage`"
                 "  `result` = 'lonely'",
                 (rebooted,)).fetchone()[0]
 print("lonely.value", count)
+
+count = db.execute("SELECT COUNT() FROM `usage`"
+                   " WHERE"
+                "  `started` > ? AND"
+                "  `result` = 'redundant'",
+                (rebooted,)).fetchone()[0]
+print("redundant.value", count)
