@@ -31,6 +31,11 @@ class Accumulator(protocol.Protocol):
             self._wait.errback(RuntimeError("closed"))
         self._disconnect.callback(None)
 
+def wait():
+    d = defer.Deferred()
+    reactor.callLater(0.001, d.callback, None)
+    return d
+
 class _Transit:
     def test_blur_size(self):
         blur = transit_server.blur_size
@@ -62,14 +67,14 @@ class _Transit:
 
         # let that arrive
         while self.count() == 0:
-            yield self.wait()
+            yield wait()
         self.assertEqual(self.count(), 1)
 
         a1.transport.loseConnection()
 
         # let that get removed
         while self.count() > 0:
-            yield self.wait()
+            yield wait()
         self.assertEqual(self.count(), 0)
 
         # the token should be removed too
@@ -203,10 +208,6 @@ class _Transit:
         return sum([len(potentials)
                     for potentials
                     in self._transit_server._pending_requests.values()])
-    def wait(self):
-        d = defer.Deferred()
-        reactor.callLater(0.001, d.callback, None)
-        return d
 
     @defer.inlineCallbacks
     def test_ignore_same_side(self):
@@ -220,12 +221,12 @@ class _Transit:
                            b" for side " + hexlify(side1) + b"\n")
         # let that arrive
         while self.count() == 0:
-            yield self.wait()
+            yield wait()
         a2.transport.write(b"please relay " + hexlify(token1) +
                            b" for side " + hexlify(side1) + b"\n")
         # let that arrive
         while self.count() == 1:
-            yield self.wait()
+            yield wait()
         self.assertEqual(self.count(), 2) # same-side connections don't match
 
         a1.transport.loseConnection()
