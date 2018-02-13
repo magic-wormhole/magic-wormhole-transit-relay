@@ -1,5 +1,6 @@
 from __future__ import print_function, unicode_literals
 import re, time, json
+from collections import defaultdict
 from twisted.python import log
 from twisted.internet import protocol
 from .database import get_db
@@ -265,12 +266,10 @@ class Transit(protocol.ServerFactory):
             self._db = get_db(usage_db)
         self._rebooted = time.time()
         # we don't track TransitConnections until they submit a token
-        self._pending_requests = {} # token -> set((side, TransitConnection))
+        self._pending_requests = defaultdict(set) # token -> set((side, TransitConnection))
         self._active_connections = set() # TransitConnection
 
     def connection_got_token(self, token, new_side, new_tc):
-        if token not in self._pending_requests:
-            self._pending_requests[token] = set()
         potentials = self._pending_requests[token]
         for old in potentials:
             (old_side, old_tc) = old
