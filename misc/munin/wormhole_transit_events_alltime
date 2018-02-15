@@ -1,0 +1,62 @@
+#! /usr/bin/env python
+
+"""
+Use the following in /etc/munin/plugin-conf.d/wormhole :
+
+[wormhole_*]
+env.usagedb /path/to/your/wormhole/server/usage.sqlite
+"""
+
+from __future__ import print_function
+import os, sys, time, sqlite3
+
+CONFIG = """\
+graph_title Magic-Wormhole Transit Server Events (all time)
+graph_vlabel Events
+graph_category network
+happy.label Happy
+happy.draw LINE1
+happy.type GAUGE
+errory.label Errory
+errory.draw LINE1
+errory.type GAUGE
+lonely.label Lonely
+lonely.draw LINE1
+lonely.type GAUGE
+redundant.label Redundant
+redundant.draw LINE1
+redundant.type GAUGE
+"""
+
+if len(sys.argv) > 1 and sys.argv[1] == "config":
+    print(CONFIG.rstrip())
+    sys.exit(0)
+
+dbfile = os.environ["usagedb"]
+assert os.path.exists(dbfile)
+db = sqlite3.connect(dbfile)
+
+MINUTE = 60.0
+rebooted,updated = db.execute("SELECT `rebooted`, `updated` FROM `current`").fetchone()
+if time.time() > updated + 5*MINUTE:
+    sys.exit(1) # expired
+
+count = db.execute("SELECT COUNT() FROM `usage`"
+                   " WHERE `result` = 'happy'",
+                   ).fetchone()[0]
+print("happy.value", count)
+
+count = db.execute("SELECT COUNT() FROM `usage`"
+                   " WHERE `result` = 'errory'",
+                   ).fetchone()[0]
+print("errory.value", count)
+
+count = db.execute("SELECT COUNT() FROM `usage`"
+                   " WHERE `result` = 'lonely'",
+                   ).fetchone()[0]
+print("lonely.value", count)
+
+count = db.execute("SELECT COUNT() FROM `usage`"
+                   " WHERE `result` = 'redundant'",
+                   ).fetchone()[0]
+print("redundant.value", count)
