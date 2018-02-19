@@ -1,11 +1,12 @@
 import os
-from . import transit_server
 from twisted.internet import reactor
 from twisted.python import usage
 from twisted.application.service import MultiService
 from twisted.application.internet import (TimerService,
                                           StreamServerEndpointService)
 from twisted.internet import endpoints
+from . import transit_server
+from .increase_rlimits import increase_rlimits
 
 LONGDESC = """\
 This plugin sets up a 'Transit Relay' server for magic-wormhole. This service
@@ -29,6 +30,7 @@ class Options(usage.Options):
 
 
 def makeService(config, reactor=reactor):
+    increase_rlimits()
     ep = endpoints.serverFromString(reactor, config["port"]) # to listen
     log_file = (os.fdopen(int(config["log-fd"]), "w")
                 if config["log-fd"] is not None
