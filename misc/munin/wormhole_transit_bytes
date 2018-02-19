@@ -14,9 +14,12 @@ CONFIG = """\
 graph_title Magic-Wormhole Transit Usage (since reboot)
 graph_vlabel Bytes Since Reboot
 graph_category network
-bytes.label Transit Bytes
+bytes.label Transit Bytes (complete)
 bytes.draw LINE1
 bytes.type GAUGE
+incomplete.label Transit Bytes (incomplete)
+incomplete.draw LINE1
+incomplete.type GAUGE
 """
 
 if len(sys.argv) > 1 and sys.argv[1] == "config":
@@ -28,10 +31,12 @@ assert os.path.exists(dbfile)
 db = sqlite3.connect(dbfile)
 
 MINUTE = 60.0
-updated,rebooted = db.execute("SELECT `updated`,`rebooted` FROM `current`").fetchone()
+updated,rebooted,incomplete = db.execute("SELECT `updated`,`rebooted`,`incomplete_bytes` FROM `current`").fetchone()
 if time.time() > updated + 5*MINUTE:
     sys.exit(1) # expired
 
-value = db.execute("SELECT SUM(`total_bytes`) FROM `usage` WHERE `started` > ?",
-                   (rebooted,)).fetchone()[0] or 0
-print("bytes.value", value)
+complete = db.execute("SELECT SUM(`total_bytes`) FROM `usage`"
+                      " WHERE `started` > ?",
+                      (rebooted,)).fetchone()[0] or 0
+print("bytes.value", complete)
+print("incomplete.value", complete+incomplete)
