@@ -15,11 +15,11 @@ class DB(unittest.TestCase):
         d = self.mktemp()
         os.mkdir(d)
         usage_db = os.path.join(d, "usage.sqlite")
-        with mock.patch("time.time", return_value=456):
+        with mock.patch("time.time", return_value=456.0):
             t = Transit(blur_usage=None, log_file=None, usage_db=usage_db)
         db = self.open_db(usage_db)
 
-        with mock.patch("time.time", return_value=457):
+        with mock.patch("time.time", return_value=457.0):
             t.recordUsage(started=123, result="happy", total_bytes=100,
                           total_time=10, waiting_time=2)
         self.assertEqual(db.execute("SELECT * FROM `usage`").fetchall(),
@@ -31,7 +31,7 @@ class DB(unittest.TestCase):
                               incomplete_bytes=0,
                               waiting=0, connected=0))
 
-        with mock.patch("time.time", return_value=458):
+        with mock.patch("time.time", return_value=458.0):
             t.recordUsage(started=150, result="errory", total_bytes=200,
                           total_time=11, waiting_time=3)
         self.assertEqual(db.execute("SELECT * FROM `usage`").fetchall(),
@@ -45,7 +45,7 @@ class DB(unittest.TestCase):
                               incomplete_bytes=0,
                               waiting=0, connected=0))
 
-        with mock.patch("time.time", return_value=459):
+        with mock.patch("time.time", return_value=459.0):
             t.timerUpdateStats()
         self.assertEqual(db.execute("SELECT * FROM `current`").fetchone(),
                          dict(rebooted=456, updated=459,
