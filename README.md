@@ -2,6 +2,7 @@
 
 [![PyPI](http://img.shields.io/pypi/v/magic-wormhole-transit-relay.svg)](https://pypi.python.org/pypi/magic-wormhole-transit-relay)
 [![Build Status](https://travis-ci.org/warner/magic-wormhole-transit-relay.svg?branch=master)](https://travis-ci.org/warner/magic-wormhole-transit-relay)
+[![Windows Build Status](https://ci.appveyor.com/api/projects/status/61kgarqikolbvj1m/branch/master?svg=true)](https://ci.appveyor.com/project/warner/magic-wormhole-transit-relay)
 [![codecov.io](https://codecov.io/github/warner/magic-wormhole-transit-relay/coverage.svg?branch=master)](https://codecov.io/github/warner/magic-wormhole-transit-relay?branch=master)
 
 
