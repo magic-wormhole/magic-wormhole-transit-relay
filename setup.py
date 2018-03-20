@@ -21,7 +21,6 @@ setup(name="magic-wormhole-transit-relay",
           "twisted >= 17.5.0",
       ],
       extras_require={
-          ':sys_platform=="win32"': ["pypiwin32"],
           "dev": ["mock", "tox", "pyflakes"],
       },
       test_suite="wormhole_transit_relay.test",
