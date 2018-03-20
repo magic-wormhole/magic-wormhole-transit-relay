@@ -1,5 +1,13 @@
 User-visible changes in "magic-wormhole-transit-relay":
 
+## Release 0.1.2 (19-Mar-2018)
+
+* Allow more simultaneous connections, by increasing the rlimits() ceiling at
+  startup
+* Improve munin plugins
+* Get tests working on Windows
+
+
 ## Release 0.1.1 (14-Feb-2018)
 
 Improve logging and munin graphing tools: previous version would count bad
