@@ -13,7 +13,7 @@ import os, sys, time, sqlite3
 CONFIG = """\
 graph_title Magic-Wormhole Transit Active Channels
 graph_vlabel Channels
-graph_category network
+graph_category wormhole
 waiting.label Transit Waiting
 waiting.draw LINE1
 waiting.type GAUGE

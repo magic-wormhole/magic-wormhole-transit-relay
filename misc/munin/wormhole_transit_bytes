@@ -13,7 +13,7 @@ import os, sys, time, sqlite3
 CONFIG = """\
 graph_title Magic-Wormhole Transit Usage (since reboot)
 graph_vlabel Bytes Since Reboot
-graph_category network
+graph_category wormhole
 bytes.label Transit Bytes (complete)
 bytes.draw LINE1
 bytes.type GAUGE
