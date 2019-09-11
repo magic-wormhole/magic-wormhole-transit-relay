@@ -204,7 +204,7 @@ class TransitConnection(protocol.Protocol):
                                      total_time, None)
         else: # 5 or 7
             # we were connected, we hung up first. We record the event.
-            assert self._mood == "happy", self._mood
+            assert self._mood == "happy", self._mood # TODO: mood==None
             assert self._buddy
             starts = [self._started, self._buddy._started]
             total_time = finished - min(starts)
