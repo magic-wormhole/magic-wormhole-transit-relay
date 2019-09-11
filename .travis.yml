@@ -23,8 +23,6 @@ after_success:
 matrix:
   include:
     - python: 2.7
-    - python: 3.3
-    - python: 3.4
     - python: 3.5
     - python: 3.6
     - python: 3.7
@@ -34,5 +32,4 @@ matrix:
       dist: xenial
     - python: nightly
   allow_failures:
-    - python: 3.3
     - python: nightly
