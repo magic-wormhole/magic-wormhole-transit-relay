@@ -46,6 +46,7 @@ class TransitConnection(protocol.Protocol):
     def connectionMade(self):
         self._started = time.time()
         self._log_requests = self.factory._log_requests
+        self.transport.setTcpKeepAlive(True)
 
     def dataReceived(self, data):
         if self._sent_ok:
