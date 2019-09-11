@@ -1,5 +1,10 @@
 User-visible changes in "magic-wormhole-transit-relay":
 
+## Release 0.2.1 (11-Sep-2019)
+
+* listen on IPv4+IPv6 properly (#12)
+
+
 ## Release 0.2.0 (10-Sep-2019)
 
 * listen on IPv4+IPv6 socket by default (#12)
