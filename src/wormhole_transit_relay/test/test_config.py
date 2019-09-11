@@ -2,7 +2,7 @@ from __future__ import unicode_literals, print_function
 from twisted.trial import unittest
 from .. import server_tap
 
-PORT = "tcp:4001:interface=\:\:1"
+PORT = "tcp:4001:interface=\:\:"
 
 class Config(unittest.TestCase):
     def test_defaults(self):
