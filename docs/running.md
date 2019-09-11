@@ -101,6 +101,10 @@ management can use the ``--log-fd=`` option to emit logs, then route those
 logs into a suitable analysis tool. Other environments might be content to
 use ``--usage-db=`` and run the included Munin plugins to monitor usage.
 
+There is also a
+[Dockerfile](https://github.com/ggeorgovassilis/magic-wormhole-transit-relay-docker),
+written by George Georgovassilis, which you might find useful.
+
 ## Configuring Clients
 
 The transit relay will listen on an "endpoint" (usually a TCP port, but it
