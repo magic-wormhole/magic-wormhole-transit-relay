@@ -1,5 +1,13 @@
 User-visible changes in "magic-wormhole-transit-relay":
 
+## Release 0.2.0 (10-Sep-2019)
+
+* listen on IPv4+IPv6 socket by default (#12)
+* enable SO_KEEPALIVE on all connections (#9)
+* drop support for py3.3 and py3.4
+* improve munin plugins
+
+
 ## Release 0.1.2 (19-Mar-2018)
 
 * Allow more simultaneous connections, by increasing the rlimits() ceiling at
