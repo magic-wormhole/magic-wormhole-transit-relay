@@ -19,7 +19,7 @@ class Options(usage.Options):
     longdesc = LONGDESC
 
     optParameters = [
-        ("port", "p", "tcp:4001", "endpoint to listen on"),
+        ("port", "p", "tcp:4001:interface=\:\:1", "endpoint to listen on"),
         ("blur-usage", None, None, "blur timestamps and data sizes in logs"),
         ("log-fd", None, None, "write JSON usage logs to this file descriptor"),
         ("usage-db", None, None, "record usage data (SQLite)"),
