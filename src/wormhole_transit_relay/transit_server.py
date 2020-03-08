@@ -46,7 +46,10 @@ class TransitConnection(protocol.Protocol):
     def connectionMade(self):
         self._started = time.time()
         self._log_requests = self.factory._log_requests
-        self.transport.setTcpKeepAlive(True)
+        try:
+            self.transport.setTcpKeepAlive(True)
+        except AttributeError:
+            pass
 
     def dataReceived(self, data):
         if self._sent_ok:
@@ -283,14 +286,14 @@ class Transit(protocol.ServerFactory):
 
                 # drop and stop tracking the rest
                 potentials.remove(old)
-                for (_, leftover_tc) in potentials:
+                for (_, leftover_tc) in potentials.copy():
                     # Don't record this as errory. It's just a spare connection
                     # from the same side as a connection that got used. This
                     # can happen if the connection hint contains multiple
                     # addresses (we don't currently support those, but it'd
                     # probably be useful in the future).
                     leftover_tc.disconnect_redundant()
-                self._pending_requests.pop(token)
+                self._pending_requests.pop(token, None)
 
                 # glue the two ends together
                 self._active_connections.add(new_tc)
