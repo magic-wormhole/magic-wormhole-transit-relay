@@ -74,14 +74,22 @@ class TransitConnection(LineReceiver):
         return self.disconnect_error()
 
     def rawDataReceived(self, data):
+        # We are an IPushProducer to our buddy's IConsumer, so they'll
+        # throttle us (by calling pauseProducing()) when their outbound
+        # buffer is full (e.g. when their downstream pipe is full). In
+        # practice, this buffers about 10MB per connection, after which
+        # point the sender will only transmit data as fast as the
+        # receiver can handle it.
         if self._sent_ok:
             self._total_sent += len(data)
             self._buddy.transport.write(data)
             return
 
+        # handshake is complete but not yet sent_ok
         self.sendLine(b"impatient")
         if self._log_requests:
             log.msg("transit impatience failure")
+        return self.disconnect_error() # impatience yields failure
 
     def _got_handshake(self, token, side):
         self._got_token = token
