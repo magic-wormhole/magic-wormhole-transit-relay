@@ -56,13 +56,13 @@ class TransitConnection(LineReceiver):
 
     def lineReceived(self, line):
         # old: "please relay {64}\n"
-        old = re.fullmatch(br"please relay (\w{64})", line)
+        old = re.search(br"^please relay (\w{64})$", line)
         if old:
             token = old.group(1)
             return self._got_handshake(token, None)
 
         # new: "please relay {64} for side {16}\n"
-        new = re.fullmatch(br"please relay (\w{64}) for side (\w{16})", line)
+        new = re.search(br"^please relay (\w{64}) for side (\w{16})$", line)
         if new:
             token = new.group(1)
             side = new.group(2)
