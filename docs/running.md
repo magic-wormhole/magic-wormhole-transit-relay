@@ -48,12 +48,33 @@ The relevant arguments are:
 * ``--port=``: the endpoint to listen on, like ``tcp:4001``
 * ``--log-fd=``: writes JSON lines to the given file descriptor for each connection
 * ``--usage-db=``: maintains a SQLite database with current and historical usage data
-* ``--blur-usage=``: if provided, logs are rounded to the given number of
-  seconds, and data sizes are rounded too
+* ``--blur-usage=``: round logged timestamps and data sizes
 
 When you use ``twist``, the relay runs in the foreground, so it will
 generally exit as soon as the controlling terminal exits. For persistent
 environments, you should daemonize the server.
+
+## Minimizing Log Data
+
+The server code attempts to strike a balance between minimizing data
+collected about users, and recording enough information to manage the server
+and monitor its operation. The standard `twistd.log` file does not record IP
+addresses unless an error occurs. The optional `--log-fd=` file (and the
+SQLite database generated if `--usage-db=` is enabled) record the time at
+which the first side connected, the time until the second side connected, the
+total transfer time, the total number of bytes transferred, and the
+success/failure status (the "mood").
+
+If `--blur-usage=` is provided, these recorded file sizes are rounded down:
+sizes less than 1kB are recorded as 0, sizes up to 1MB are rounded to the
+nearest kB, sizes up to 1GB are rounded to the nearest MB, and sizes above
+1GB are rounded to the nearest 100MB.
+
+The argument to `--blur-usage=` is treated as a number of seconds, and the
+"first side connects" timestamp is rounded to a multiple of this. For
+example, `--blur-usage=3600` means all timestamps are rounded down to the
+nearest hour. The waiting time and total time deltas are recorded without
+rounding.
 
 ## Daemonization
 
