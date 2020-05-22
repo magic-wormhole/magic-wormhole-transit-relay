@@ -396,6 +396,23 @@ class _Transit:
 
         a1.transport.loseConnection()
 
+    @defer.inlineCallbacks
+    def test_short_handshake(self):
+        ep = clientFromString(reactor, self.transit)
+        a1 = yield connectProtocol(ep, Accumulator())
+
+        # hang up before sending a complete handshake
+        a1.transport.write(b"short")
+        a1.transport.loseConnection()
+
+    @defer.inlineCallbacks
+    def test_empty_handshake(self):
+        ep = clientFromString(reactor, self.transit)
+        a1 = yield connectProtocol(ep, Accumulator())
+
+        # hang up before sending anything
+        a1.transport.loseConnection()
+
 class TransitWithLogs(_Transit, ServerBase, unittest.TestCase):
     log_requests = True
 
@@ -411,6 +428,45 @@ class Usage(ServerBase, unittest.TestCase):
             self._usage.append((started, result, total_bytes,
                                 total_time, waiting_time))
         self._transit_server.recordUsage = record
+
+    @defer.inlineCallbacks
+    def test_empty(self):
+        ep = clientFromString(reactor, self.transit)
+        a1 = yield connectProtocol(ep, Accumulator())
+
+        # hang up before sending anything
+        a1.transport.loseConnection()
+        yield a1._disconnect
+        # give the server a chance to react. in most of the other tests, the
+        # server hangs up on us, so this test needs extra synchronization
+        while len(self._usage) == 0:
+            d = defer.Deferred()
+            reactor.callLater(0.01, d.callback, None)
+            yield d
+        # that will log the "empty" usage event
+        self.assertEqual(len(self._usage), 1, self._usage)
+        (started, result, total_bytes, total_time, waiting_time) = self._usage[0]
+        self.assertEqual(result, "empty", self._usage)
+
+    @defer.inlineCallbacks
+    def test_short(self):
+        ep = clientFromString(reactor, self.transit)
+        a1 = yield connectProtocol(ep, Accumulator())
+
+        # hang up before sending a complete handshake
+        a1.transport.write(b"short")
+        a1.transport.loseConnection()
+        yield a1._disconnect
+        # give the server a chance to react. in most of the other tests, the
+        # server hangs up on us, so this test needs extra synchronization
+        while len(self._usage) == 0:
+            d = defer.Deferred()
+            reactor.callLater(0.01, d.callback, None)
+            yield d
+        # that will log the "empty" usage event
+        self.assertEqual(len(self._usage), 1, self._usage)
+        (started, result, total_bytes, total_time, waiting_time) = self._usage[0]
+        self.assertEqual(result, "empty", self._usage)
 
     @defer.inlineCallbacks
     def test_errory(self):

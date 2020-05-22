@@ -29,7 +29,7 @@ class TransitConnection(protocol.Protocol):
         self._got_side = False
         self._token_buffer = b""
         self._sent_ok = False
-        self._mood = None
+        self._mood = "empty"
         self._buddy = None
         self._total_sent = 0
 
@@ -182,7 +182,8 @@ class TransitConnection(protocol.Protocol):
         finished = time.time()
         total_time = finished - self._started
 
-        # Record usage. There are seven cases:
+        # Record usage. There are eight cases:
+        # * n0: we haven't gotten a full handshake yet (empty)
         # * n1: the handshake failed, not a real client (errory)
         # * n2: real client disconnected before any buddy appeared (lonely)
         # * n3: real client closed as redundant after buddy appears (redundant)
@@ -191,11 +192,15 @@ class TransitConnection(protocol.Protocol):
         # * n6: real client connected last, buddy closes first (jilted)
         # * n7: real client connected last, buddy closes last (happy)
 
-        # * non-connected clients (1,2,3) always write a usage record
+        # * non-connected clients (0,1,2,3) always write a usage record
         # * for connected clients, whoever disconnects first gets to write the
         #   usage record (5, 7). The last disconnect doesn't write a record.
 
-        if self._mood == "errory": # 1
+        if self._mood == "empty": # 0
+            assert not self._buddy
+            self.factory.recordUsage(self._started, "empty", 0,
+                                     total_time, None)
+        elif self._mood == "errory": # 1
             assert not self._buddy
             self.factory.recordUsage(self._started, "errory", 0,
                                      total_time, None)
@@ -213,7 +218,7 @@ class TransitConnection(protocol.Protocol):
                                      total_time, None)
         else: # 5 or 7
             # we were connected, we hung up first. We record the event.
-            assert self._mood == "happy", self._mood # TODO: mood==None
+            assert self._mood == "happy", self._mood
             assert self._buddy
             starts = [self._started, self._buddy._started]
             total_time = finished - min(starts)
