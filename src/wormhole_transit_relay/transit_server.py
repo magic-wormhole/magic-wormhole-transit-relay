@@ -56,6 +56,14 @@ class TransitConnection(protocol.Protocol):
             # practice, this buffers about 10MB per connection, after which
             # point the sender will only transmit data as fast as the
             # receiver can handle it.
+            if not self._buddy:
+                # Our buddy disconnected (we're "jilted"), so we hung up too,
+                # but our incoming data hasn't stopped yet (it will in a
+                # moment, after our disconnect makes a roundtrip through the
+                # kernel). This probably means the file receiver hung up, and
+                # this connection is the file sender. In may-2020 this
+                # happened 11 times in 40 days.
+                return
             self._total_sent += len(data)
             self._buddy.transport.write(data)
             return
