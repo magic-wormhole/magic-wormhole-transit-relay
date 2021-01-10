@@ -29,4 +29,4 @@ jobs:
     - name: Test
       run: |
         python --version
-        tox -q
+        tox -e coverage
