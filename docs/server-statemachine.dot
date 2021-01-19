@@ -1,0 +1,22 @@
+/**
+. thinking about state-machine from "hand-drawn" perspective
+. will it look the same as an Automat one?
+**/
+
+digraph {
+        listening -> wait_relay [label="connection_made"]
+
+        wait_relay -> wait_partner [label="please_relay\nFindPartner"]
+        wait_relay -> wait_partner [label="please_relay_for_side\nFindPartner"]
+        wait_relay -> done [label="invalid_token\nSend('bad handshake')\nDisconnect"]
+        wait_relay -> done [label="connection_lost"]
+
+        wait_partner -> relaying [label="got_partner\nConnectPartner(partner)\nSend('ok')"]
+        wait_partner -> done [label="got_bytes\nDisconnect"]
+        wait_partner -> done [label="connection_lost"]
+
+        relaying -> relaying [label="got_bytes\nSend(bytes)"]
+        relaying -> done [label="partner_connection_lost\nDisconnectMe"]
+        relaying -> done [label="connection_lost\nDisconnectPartner"]
+}
+
