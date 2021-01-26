@@ -24,6 +24,17 @@ def blur_size(size):
         return round_to(size, 1e6)
     return round_to(size, 100e6)
 
+
+from wormhole_transit_relay.server_state import (
+    TransitServerState,
+    PendingRequests,
+    ActiveConnections,
+    ITransitClient,
+)
+from zope.interface import implementer
+
+
+@implementer(ITransitClient)
 class TransitConnection(LineReceiver):
     delimiter = b'\n'
     # maximum length of a line we will accept before the handshake is complete.
@@ -32,12 +43,32 @@ class TransitConnection(LineReceiver):
     MAX_LENGTH = 1024
 
     def __init__(self):
-        self._got_token = False
-        self._got_side = False
-        self._sent_ok = False
-        self._mood = "empty"
-        self._buddy = None
         self._total_sent = 0
+
+    def send(self, data):
+        """
+        ITransitClient API
+        """
+        self.transport.write(data)
+
+    def disconnect(self):
+        """
+        ITransitClient API
+        """
+        self.transport.loseConnection()
+
+    def connect_partner(self, other):
+        """
+        ITransitClient API
+        """
+        self._buddy = other
+
+    def disconnect_partner(self):
+        """
+        ITransitClient API
+        """
+        self._buddy._client.transport.loseConnection()
+        self._buddy = None
 
     def describeToken(self):
         d = "-"
@@ -50,6 +81,8 @@ class TransitConnection(LineReceiver):
         return d
 
     def connectionMade(self):
+        self._state = TransitServerState(self.factory.pending_requests)
+        self._state.connection_made(self)
         self._started = time.time()
         self._log_requests = self.factory._log_requests
         try:
@@ -71,10 +104,10 @@ class TransitConnection(LineReceiver):
             side = new.group(2)
             return self._got_handshake(token, side)
 
-        self.sendLine(b"bad handshake")
-        if self._log_requests:
-            log.msg("transit handshake failure")
-        return self.disconnect_error()
+        # state-machine calls us via ITransitClient interface to do
+        # bad handshake etc.
+        return self._state.bad_token()
+    #return self._state.got_bytes(line)
 
     def rawDataReceived(self, data):
         # We are an IPushProducer to our buddy's IConsumer, so they'll
@@ -83,33 +116,15 @@ class TransitConnection(LineReceiver):
         # practice, this buffers about 10MB per connection, after which
         # point the sender will only transmit data as fast as the
         # receiver can handle it.
-        if self._sent_ok:
-            if not self._buddy:
-                # Our buddy disconnected (we're "jilted"), so we hung up too,
-                # but our incoming data hasn't stopped yet (it will in a
-                # moment, after our disconnect makes a roundtrip through the
-                # kernel). This probably means the file receiver hung up, and
-                # this connection is the file sender. In may-2020 this
-                # happened 11 times in 40 days.
-                return
-            self._total_sent += len(data)
-            self._buddy.transport.write(data)
-            return
-
-        # handshake is complete but not yet sent_ok
-        self.sendLine(b"impatient")
-        if self._log_requests:
-            log.msg("transit impatience failure")
-        return self.disconnect_error() # impatience yields failure
+        self._state.got_bytes(data)
+        self._total_sent += len(data)
 
     def _got_handshake(self, token, side):
-        self._got_token = token
-        self._got_side = side
-        self._mood = "lonely" # until buddy connects
+        self._state.please_relay_for_side(token, side)
+        # self._mood = "lonely" # until buddy connects
         self.setRawMode()
-        self.factory.connection_got_token(token, side, self)
 
-    def buddy_connected(self, them):
+    def __buddy_connected(self, them):
         self._buddy = them
         self._mood = "happy"
         self.sendLine(b"ok")
@@ -121,7 +136,7 @@ class TransitConnection(LineReceiver):
         # The Transit object calls buddy_connected() on both protocols, so
         # there will be two producer/consumer pairs.
 
-    def buddy_disconnected(self):
+    def __buddy_disconnected(self):
         if self._log_requests:
             log.msg("buddy_disconnected %s" % self.describeToken())
         self._buddy = None
@@ -145,56 +160,62 @@ class TransitConnection(LineReceiver):
     def connectionLost(self, reason):
         finished = time.time()
         total_time = finished - self._started
+        self._state.connection_lost()
 
-        # Record usage. There are eight cases:
-        # * n0: we haven't gotten a full handshake yet (empty)
-        # * n1: the handshake failed, not a real client (errory)
-        # * n2: real client disconnected before any buddy appeared (lonely)
-        # * n3: real client closed as redundant after buddy appears (redundant)
-        # * n4: real client connected first, buddy closes first (jilted)
-        # * n5: real client connected first, buddy close last (happy)
-        # * n6: real client connected last, buddy closes first (jilted)
-        # * n7: real client connected last, buddy closes last (happy)
+        # XXX FIXME record usage
 
-        # * non-connected clients (0,1,2,3) always write a usage record
-        # * for connected clients, whoever disconnects first gets to write the
-        #   usage record (5, 7). The last disconnect doesn't write a record.
+        if False:
+            # Record usage. There are eight cases:
+            # * n0: we haven't gotten a full handshake yet (empty)
+            # * n1: the handshake failed, not a real client (errory)
+            # * n2: real client disconnected before any buddy appeared (lonely)
+            # * n3: real client closed as redundant after buddy appears (redundant)
+            # * n4: real client connected first, buddy closes first (jilted)
+            # * n5: real client connected first, buddy close last (happy)
+            # * n6: real client connected last, buddy closes first (jilted)
+            # * n7: real client connected last, buddy closes last (happy)
 
-        if self._mood == "empty": # 0
-            assert not self._buddy
-            self.factory.recordUsage(self._started, "empty", 0,
-                                     total_time, None)
-        elif self._mood == "errory": # 1
-            assert not self._buddy
-            self.factory.recordUsage(self._started, "errory", 0,
-                                     total_time, None)
-        elif self._mood == "redundant": # 3
-            assert not self._buddy
-            self.factory.recordUsage(self._started, "redundant", 0,
-                                     total_time, None)
-        elif self._mood == "jilted": # 4 or 6
-            # we were connected, but our buddy hung up on us. They record the
-            # usage event, we do not
-            pass
-        elif self._mood == "lonely": # 2
-            assert not self._buddy
-            self.factory.recordUsage(self._started, "lonely", 0,
-                                     total_time, None)
-        else: # 5 or 7
-            # we were connected, we hung up first. We record the event.
-            assert self._mood == "happy", self._mood
-            assert self._buddy
-            starts = [self._started, self._buddy._started]
-            total_time = finished - min(starts)
-            waiting_time = max(starts) - min(starts)
-            total_bytes = self._total_sent + self._buddy._total_sent
-            self.factory.recordUsage(self._started, "happy", total_bytes,
-                                     total_time, waiting_time)
+            # * non-connected clients (0,1,2,3) always write a usage record
+            # * for connected clients, whoever disconnects first gets to write the
+            #   usage record (5, 7). The last disconnect doesn't write a record.
 
-        if self._buddy:
-            self._buddy.buddy_disconnected()
-        self.factory.transitFinished(self, self._got_token, self._got_side,
-                                     self.describeToken())
+            if self._mood == "empty": # 0
+                assert not self._buddy
+                self.factory.recordUsage(self._started, "empty", 0,
+                                         total_time, None)
+            elif self._mood == "errory": # 1
+                assert not self._buddy
+                self.factory.recordUsage(self._started, "errory", 0,
+                                         total_time, None)
+            elif self._mood == "redundant": # 3
+                assert not self._buddy
+                self.factory.recordUsage(self._started, "redundant", 0,
+                                         total_time, None)
+            elif self._mood == "jilted": # 4 or 6
+                # we were connected, but our buddy hung up on us. They record the
+                # usage event, we do not
+                pass
+            elif self._mood == "lonely": # 2
+                assert not self._buddy
+                self.factory.recordUsage(self._started, "lonely", 0,
+                                         total_time, None)
+            else: # 5 or 7
+                # we were connected, we hung up first. We record the event.
+                assert self._mood == "happy", self._mood
+                assert self._buddy
+                starts = [self._started, self._buddy._started]
+                total_time = finished - min(starts)
+                waiting_time = max(starts) - min(starts)
+                total_bytes = self._total_sent + self._buddy._total_sent
+                self.factory.recordUsage(self._started, "happy", total_bytes,
+                                         total_time, waiting_time)
+
+            if self._buddy:
+                self._buddy.buddy_disconnected()
+    #        self.factory.transitFinished(self, self._got_token, self._got_side,
+    #                                     self.describeToken())
+
+
 
 class Transit(protocol.ServerFactory):
     # I manage pairs of simultaneous connections to a secondary TCP port,
@@ -230,6 +251,8 @@ class Transit(protocol.ServerFactory):
     protocol = TransitConnection
 
     def __init__(self, blur_usage, log_file, usage_db):
+        self.active_connections = ActiveConnections()
+        self.pending_requests = PendingRequests(self.active_connections)
         self._blur_usage = blur_usage
         self._log_requests = blur_usage is None
         if self._blur_usage:
@@ -246,39 +269,6 @@ class Transit(protocol.ServerFactory):
         # we don't track TransitConnections until they submit a token
         self._pending_requests = defaultdict(set) # token -> set((side, TransitConnection))
         self._active_connections = set() # TransitConnection
-
-    def connection_got_token(self, token, new_side, new_tc):
-        potentials = self._pending_requests[token]
-        for old in potentials:
-            (old_side, old_tc) = old
-            if ((old_side is None)
-                or (new_side is None)
-                or (old_side != new_side)):
-                # we found a match
-                if self._debug_log:
-                    log.msg("transit relay 2: %s" % new_tc.describeToken())
-
-                # drop and stop tracking the rest
-                potentials.remove(old)
-                for (_, leftover_tc) in potentials.copy():
-                    # Don't record this as errory. It's just a spare connection
-                    # from the same side as a connection that got used. This
-                    # can happen if the connection hint contains multiple
-                    # addresses (we don't currently support those, but it'd
-                    # probably be useful in the future).
-                    leftover_tc.disconnect_redundant()
-                self._pending_requests.pop(token, None)
-
-                # glue the two ends together
-                self._active_connections.add(new_tc)
-                self._active_connections.add(old_tc)
-                new_tc.buddy_connected(old_tc)
-                old_tc.buddy_connected(new_tc)
-                return
-        if self._debug_log:
-            log.msg("transit relay 1: %s" % new_tc.describeToken())
-        potentials.add((new_side, new_tc))
-        # TODO: timer
 
     def transitFinished(self, tc, token, side, description):
         if token in self._pending_requests:
