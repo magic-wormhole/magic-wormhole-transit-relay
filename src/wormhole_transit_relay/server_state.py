@@ -161,6 +161,7 @@ class TransitServerState(object):
     _side = None
     _first = None
     _mood = "empty"
+    _total_sent = 0
 
     def __init__(self, pending_requests):
         self._pending_requests = pending_requests
@@ -273,6 +274,10 @@ class TransitServerState(object):
     @_machine.output()
     def _send_impatient(self):
         self._client.send(b"impatient\n")
+
+    @_machine.output()
+    def _count_bytes(self, data):
+        self._total_sent += len(data)
 
     @_machine.output()
     def _send(self, data):
@@ -404,7 +409,7 @@ class TransitServerState(object):
     wait_relay.upon(
         got_bytes,
         enter=done,
-        outputs=[_mood_errory, _disconnect],
+        outputs=[_count_bytes, _mood_errory, _disconnect],
     )
     wait_relay.upon(
         connection_lost,

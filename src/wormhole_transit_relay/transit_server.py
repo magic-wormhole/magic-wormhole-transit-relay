@@ -42,9 +42,6 @@ class TransitConnection(LineReceiver):
 
     MAX_LENGTH = 1024
 
-    def __init__(self):
-        self._total_sent = 0
-
     def send(self, data):
         """
         ITransitClient API
@@ -104,10 +101,10 @@ class TransitConnection(LineReceiver):
             side = new.group(2)
             return self._got_handshake(token, side)
 
-        # state-machine calls us via ITransitClient interface to do
-        # bad handshake etc.
+        # we should have been switched to "raw data" mode on the first
+        # line received (after which rawDataReceived() is called for
+        # all bytes) so getting here means a bad handshake.
         return self._state.bad_token()
-    #return self._state.got_bytes(line)
 
     def rawDataReceived(self, data):
         # We are an IPushProducer to our buddy's IConsumer, so they'll
@@ -117,7 +114,6 @@ class TransitConnection(LineReceiver):
         # point the sender will only transmit data as fast as the
         # receiver can handle it.
         self._state.got_bytes(data)
-        self._total_sent += len(data)
 
     def _got_handshake(self, token, side):
         self._state.please_relay_for_side(token, side)
