@@ -519,7 +519,7 @@ class TransitServerState(object):
     relaying.upon(
         got_bytes,
         enter=relaying,
-        outputs=[_send_to_partner],
+        outputs=[_count_bytes, _send_to_partner],
     )
     relaying.upon(
         connection_lost,
