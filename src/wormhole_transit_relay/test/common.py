@@ -11,6 +11,8 @@ from zope.interface import (
 from ..transit_server import (
     Transit,
 )
+from ..transit_server import Transit
+from ..server_state import create_usage_tracker
 
 
 class IRelayTestClient(Interface):
@@ -42,6 +44,7 @@ class IRelayTestClient(Interface):
         Erase any received data to this point.
         """
 
+
 class ServerBase:
     log_requests = False
 
@@ -62,11 +65,12 @@ class ServerBase:
             self.flush()
 
     def _setup_relay(self, blur_usage=None, log_file=None, usage_db=None):
-        self._transit_server = Transit(
+        usage = create_usage_tracker(
             blur_usage=blur_usage,
             log_file=log_file,
             usage_db=usage_db,
         )
+        self._transit_server = Transit(usage)
         self._transit_server._debug_log = self.log_requests
 
     def new_protocol(self):
