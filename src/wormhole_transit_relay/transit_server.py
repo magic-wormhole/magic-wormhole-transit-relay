@@ -270,8 +270,8 @@ class Transit(protocol.ServerFactory):
             self._db = get_db(usage_db)
         self._rebooted = time.time()
         # we don't track TransitConnections until they submit a token
-        self._pending_requests = defaultdict(set) # token -> set((side, TransitConnection))
-        self._active_connections = set() # TransitConnection
+##        self._pending_requests = defaultdict(set) # token -> set((side, TransitConnection))
+##        self._active_connections = set() # TransitConnection
 
     def transitFinished(self, tc, token, side, description):
         if token in self._pending_requests:
