@@ -29,6 +29,7 @@ from wormhole_transit_relay.server_state import (
     TransitServerState,
     PendingRequests,
     ActiveConnections,
+    UsageRecorder,
     ITransitClient,
 )
 from zope.interface import implementer
@@ -41,6 +42,7 @@ class TransitConnection(LineReceiver):
     # This must be >= to the longest possible handshake message.
 
     MAX_LENGTH = 1024
+    started_time = None
 
     def send(self, data):
         """
@@ -78,9 +80,15 @@ class TransitConnection(LineReceiver):
         return d
 
     def connectionMade(self):
-        self._state = TransitServerState(self.factory.pending_requests)
+        # ideally more like self._reactor.seconds() ... but Twisted
+        # doesn't have a good way to get the reactor for a protocol
+        # (besides "use the global one")
+        self.started_time = time.time()
+        self._state = TransitServerState(
+            self.factory.pending_requests,
+            self.factory.usage,
+        )
         self._state.connection_made(self)
-        self._started = time.time()
         self._log_requests = self.factory._log_requests
         try:
             self.transport.setTcpKeepAlive(True)
@@ -154,8 +162,6 @@ class TransitConnection(LineReceiver):
         self.transport.loseConnection()
 
     def connectionLost(self, reason):
-        finished = time.time()
-        total_time = finished - self._started
         self._state.connection_lost()
 
         # XXX FIXME record usage
@@ -249,6 +255,7 @@ class Transit(protocol.ServerFactory):
     def __init__(self, blur_usage, log_file, usage_db):
         self.active_connections = ActiveConnections()
         self.pending_requests = PendingRequests(self.active_connections)
+        self.usage = UsageRecorder()
         self._blur_usage = blur_usage
         self._log_requests = blur_usage is None
         if self._blur_usage:

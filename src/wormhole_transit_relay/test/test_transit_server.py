@@ -311,10 +311,7 @@ class Usage(ServerBase, unittest.TestCase):
     def setUp(self):
         super(Usage, self).setUp()
         self._usage = []
-        def record(started, result, total_bytes, total_time, waiting_time):
-            self._usage.append((started, result, total_bytes,
-                                total_time, waiting_time))
-        self._transit_server.recordUsage = record
+        self._transit_server.usage.json_record = self._usage.append
 
     def test_empty(self):
         p1 = self.new_protocol()
@@ -334,8 +331,7 @@ class Usage(ServerBase, unittest.TestCase):
 
         # that will log the "empty" usage event
         self.assertEqual(len(self._usage), 1, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[0]
-        self.assertEqual(result, "empty", self._usage)
+        self.assertEqual("empty", self._usage[0]["mood"])
 
     def test_errory(self):
         p1 = self.new_protocol()
