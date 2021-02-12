@@ -350,8 +350,7 @@ class Usage(ServerBase, unittest.TestCase):
 
         # that will log the "empty" usage event
         self.assertEqual(len(self._usage), 1, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[0]
-        self.assertEqual(result, "empty", self._usage)
+        self.assertEqual(self._usage[0]["mood"], "empty", self._usage)
 
     def test_short(self):
         p1 = self.new_protocol()
@@ -372,8 +371,7 @@ class Usage(ServerBase, unittest.TestCase):
         # that will log the "errory" usage event, then drop the connection
         p1.disconnect()
         self.assertEqual(len(self._usage), 1, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[0]
-        self.assertEqual(result, "errory", self._usage)
+        self.assertEqual(self._usage[0]["mood"], "errory", self._usage)
 
     def test_lonely(self):
         p1 = self.new_protocol()
@@ -387,9 +385,8 @@ class Usage(ServerBase, unittest.TestCase):
         self.flush()
 
         self.assertEqual(len(self._usage), 1, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[0]
-        self.assertEqual(result, "lonely", self._usage)
-        self.assertIdentical(waiting_time, None)
+        self.assertEqual(self._usage[0]["mood"], "lonely", self._usage)
+        self.assertIdentical(self._usage[0]["waiting_time"], None)
 
     def test_one_happy_one_jilted(self):
         p1 = self.new_protocol()
@@ -414,9 +411,8 @@ class Usage(ServerBase, unittest.TestCase):
         self.flush()
 
         self.assertEqual(len(self._usage), 1, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[0]
-        self.assertEqual(result, "happy", self._usage)
-        self.assertEqual(total_bytes, 20)
+        self.assertEqual(self._usage[0]["mood"], "happy", self._usage)
+        self.assertEqual(self._usage[0]["total_bytes"], 20)
         self.assertNotIdentical(waiting_time, None)
 
     def test_redundant(self):
@@ -441,20 +437,17 @@ class Usage(ServerBase, unittest.TestCase):
         self.flush()
 
         self.assertEqual(len(self._usage), 1, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[0]
-        self.assertEqual(result, "lonely", self._usage)
+        self.assertEqual(self._usage[0]["mood"], "lonely")
 
         p2.send(handshake(token1, side=side2))
         self.flush()
         self.assertEqual(len(self._transit_server._pending_requests), 0)
         self.assertEqual(len(self._usage), 2, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[1]
-        self.assertEqual(result, "redundant", self._usage)
+        self.assertEqual(self._usage[1]["mood"], "redundant")
 
         # one of the these is unecessary, but probably harmless
         p1a.disconnect()
         p1b.disconnect()
         self.flush()
         self.assertEqual(len(self._usage), 3, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[2]
-        self.assertEqual(result, "happy", self._usage)
+        self.assertEqual(self._usage[2]["mood"], "happy")
