@@ -214,14 +214,6 @@ class UsageTracker(object):
         """
         self._backends.add(backend)
 
-    def remove_backend(self, backend):
-        """
-        Remove an existing backend
-
-        :param IUsageWriter backend: the backend to remove
-        """
-        self._backends.remove(backend)
-
     def record(self, started, buddy_started, result, bytes_sent, buddy_bytes):
         """
         :param int started: timestamp when our connection started
