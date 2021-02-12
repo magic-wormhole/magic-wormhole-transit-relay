@@ -1,4 +1,5 @@
 import time
+import json
 from collections import defaultdict
 
 import automat
@@ -126,29 +127,54 @@ class LogFileUsageRecorder:
             "total_bytes": total_bytes,
             "mood": mood,
         }
-        self._file.write(json.dumps(data))
-
+        self._file.write(json.dumps(data) + "\n")
+        self._file.flush()
 
 
 @implementer(IUsageWriter)
 class DatabaseUsageRecorder:
 
-    def __init__(self, _db):
+    def __init__(self, db):
         self._db = db
 
     def record_usage(self, started=None, total_time=None, waiting_time=None, total_bytes=None, mood=None):
         """
         IUsageWriter.
         """
+        self._db.execute(
+            "INSERT INTO `usage`"
+            " (`started`, `total_time`, `waiting_time`,"
+            "  `total_bytes`, `result`)"
+            " VALUES (?,?,?,?,?)",
+            (started, total_time, waiting_time, total_bytes, mood)
+        )
+        # XXX FIXME see comment in transit_server
+        #self._update_stats()
+        self._db.commit()
 
 
-class UsageRecorder(object):
+def round_to(size, coarseness):
+    return int(coarseness*(1+int((size-1)/coarseness)))
+
+
+def blur_size(size):
+    if size == 0:
+        return 0
+    if size < 1e6:
+        return round_to(size, 10e3)
+    if size < 1e9:
+        return round_to(size, 1e6)
+    return round_to(size, 100e6)
+
+
+class UsageTracker(object):
     """
     Tracks usage statistics of connections
     """
 
-    def __init__(self):
+    def __init__(self, blur_usage):
         self._backends = set()
+        self._blur_usage = blur_usage
 
     def add_backend(self, backend):
         """
@@ -181,7 +207,6 @@ class UsageRecorder(object):
 
         :param int buddy_bytes: number of bytes our partner sent
         """
-
         # ideally self._reactor.seconds() or similar, but ..
         finished = time.time()
         if buddy_started is not None:
@@ -193,9 +218,11 @@ class UsageRecorder(object):
             total_time = finished - started
             waiting_time = None
             total_bytes = bytes_sent
-        # probably want like "backends" here or something? original
-        # code logs some JSON (maybe) and writes to a database (maybe)
-        # and tests record in memory.
+
+        if self._blur_usage:
+            started = self._blur_usage * (started // self._blur_usage)
+            total_bytes = blur_size(total_bytes)
+
         self._notify_backends({
             "started": started,
             "total_time": total_time,

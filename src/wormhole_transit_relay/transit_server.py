@@ -12,24 +12,14 @@ HOUR = 60*MINUTE
 DAY = 24*HOUR
 MB = 1000*1000
 
-def round_to(size, coarseness):
-    return int(coarseness*(1+int((size-1)/coarseness)))
-
-def blur_size(size):
-    if size == 0:
-        return 0
-    if size < 1e6:
-        return round_to(size, 10e3)
-    if size < 1e9:
-        return round_to(size, 1e6)
-    return round_to(size, 100e6)
-
 
 from wormhole_transit_relay.server_state import (
     TransitServerState,
     PendingRequests,
     ActiveConnections,
-    UsageRecorder,
+    UsageTracker,
+    DatabaseUsageRecorder,
+    LogFileUsageRecorder,
     ITransitClient,
 )
 from zope.interface import implementer
@@ -255,7 +245,7 @@ class Transit(protocol.ServerFactory):
     def __init__(self, blur_usage, log_file, usage_db):
         self.active_connections = ActiveConnections()
         self.pending_requests = PendingRequests(self.active_connections)
-        self.usage = UsageRecorder()
+        self.usage = UsageTracker(blur_usage)
         self._blur_usage = blur_usage
         self._log_requests = blur_usage is None
         if self._blur_usage:
@@ -264,10 +254,13 @@ class Transit(protocol.ServerFactory):
         else:
             log.msg("not blurring access times")
         self._debug_log = False
-        self._log_file = log_file
+##        self._log_file = log_file
         self._db = None
         if usage_db:
             self._db = get_db(usage_db)
+            self.usage.add_backend(DatabaseUsageRecorder(self._db))
+        if log_file:
+            self.usage.add_backend(LogFileUsageRecorder(log_file))
         self._rebooted = time.time()
         # we don't track TransitConnections until they submit a token
 ##        self._pending_requests = defaultdict(set) # token -> set((side, TransitConnection))
@@ -317,6 +310,9 @@ class Transit(protocol.ServerFactory):
                              " VALUES (?,?,?, ?,?)",
                              (started, total_time, waiting_time,
                               total_bytes, result))
+            # XXXX aaaaaAA! okay, so just this one type of usage also
+            # does some other random stats-stuff; need more
+            # refactorizing
             self._update_stats()
             self._db.commit()
 
