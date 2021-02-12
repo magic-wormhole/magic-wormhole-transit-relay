@@ -362,6 +362,10 @@ class TransitServerState(object):
     # some outputs to record "usage" information ..
     @_machine.output()
     def _record_usage(self):
+        if self._mood == "jilted":
+            if self._buddy:
+                if self._buddy._mood == "happy":
+                    return
         self._usage.record(
             started=self._client.started_time,
             buddy_started=self._buddy._client.started_time if self._buddy is not None else None,
