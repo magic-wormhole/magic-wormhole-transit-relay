@@ -153,8 +153,14 @@ class PendingRequests(object):
         self._active = active_connections
 
     def unregister(self, token, side, tc):
+        """
+        We no longer care about a particular client (e.g. it has
+        disconnected).
+        """
         if token in self._requests:
             self._requests[token].discard((side, tc))
+            if not self._requests[token]:
+                del self._requests[token]
         self._active.unregister(tc)
 
     def register_token(self, token, new_side, new_tc):
