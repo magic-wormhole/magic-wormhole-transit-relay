@@ -19,9 +19,10 @@ class DB(unittest.TestCase):
         with mock.patch("time.time", return_value=T+0):
             t = Transit(blur_usage=None, log_file=None, usage_db=usage_db)
         db = self.open_db(usage_db)
+        usage = list(t.usage._backends)[0]
 
         with mock.patch("time.time", return_value=T+1):
-            t.recordUsage(started=123, result="happy", total_bytes=100,
+            usage.record_usage(started=123, mood="happy", total_bytes=100,
                           total_time=10, waiting_time=2)
         self.assertEqual(db.execute("SELECT * FROM `usage`").fetchall(),
                          [dict(result="happy", started=123,
@@ -33,7 +34,7 @@ class DB(unittest.TestCase):
                               waiting=0, connected=0))
 
         with mock.patch("time.time", return_value=T+2):
-            t.recordUsage(started=150, result="errory", total_bytes=200,
+            usage.record_usage(started=150, mood="errory", total_bytes=200,
                           total_time=11, waiting_time=3)
         self.assertEqual(db.execute("SELECT * FROM `usage`").fetchall(),
                          [dict(result="happy", started=123,
@@ -55,18 +56,22 @@ class DB(unittest.TestCase):
 
     def test_no_db(self):
         t = Transit(blur_usage=None, log_file=None, usage_db=None)
+        self.assertEqual(0, len(t.usage._backends))
 
-        t.recordUsage(started=123, result="happy", total_bytes=100,
-                      total_time=10, waiting_time=2)
-        t.timerUpdateStats()
 
 class LogToStdout(unittest.TestCase):
     def test_log(self):
         # emit lines of JSON to log_file, if set
         log_file = io.StringIO()
         t = Transit(blur_usage=None, log_file=log_file, usage_db=None)
-        t.recordUsage(started=123, result="happy", total_bytes=100,
-                      total_time=10, waiting_time=2)
+        with mock.patch("time.time", return_value=133):
+            t.usage.record(
+                started=123,
+                buddy_started=125,
+                result="happy",
+                bytes_sent=100,
+                buddy_bytes=0,
+            )
         self.assertEqual(json.loads(log_file.getvalue()),
                          {"started": 123, "total_time": 10,
                           "waiting_time": 2, "total_bytes": 100,
@@ -77,8 +82,16 @@ class LogToStdout(unittest.TestCase):
         # requested amount, and sizes should be rounded up too
         log_file = io.StringIO()
         t = Transit(blur_usage=60, log_file=log_file, usage_db=None)
-        t.recordUsage(started=123, result="happy", total_bytes=11999,
-                      total_time=10, waiting_time=2)
+
+        with mock.patch("time.time", return_value=123 + 10):
+            t.usage.record(
+                started=123,
+                buddy_started=125,
+                result="happy",
+                bytes_sent=11999,
+                buddy_bytes=8001,
+            )
+        print(log_file.getvalue())
         self.assertEqual(json.loads(log_file.getvalue()),
                          {"started": 120, "total_time": 10,
                           "waiting_time": 2, "total_bytes": 20000,
@@ -86,5 +99,10 @@ class LogToStdout(unittest.TestCase):
 
     def test_do_not_log(self):
         t = Transit(blur_usage=60, log_file=None, usage_db=None)
-        t.recordUsage(started=123, result="happy", total_bytes=11999,
-                      total_time=10, waiting_time=2)
+        t.usage.record(
+            started=123,
+            buddy_started=124,
+            result="happy",
+            bytes_sent=11999,
+            buddy_bytes=12,
+        )

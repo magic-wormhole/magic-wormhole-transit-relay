@@ -3,7 +3,10 @@ from binascii import hexlify
 from twisted.trial import unittest
 from .common import ServerBase
 from .. import transit_server
-from ..server_state import MemoryUsageRecorder
+from ..server_state import (
+    MemoryUsageRecorder,
+    blur_size,
+)
 
 def handshake(token, side=None):
     hs = b"please relay " + hexlify(token)
@@ -21,22 +24,21 @@ class _Transit:
         ])
 
     def test_blur_size(self):
-        blur = transit_server.blur_size
-        self.failUnlessEqual(blur(0), 0)
-        self.failUnlessEqual(blur(1), 10e3)
-        self.failUnlessEqual(blur(10e3), 10e3)
-        self.failUnlessEqual(blur(10e3+1), 20e3)
-        self.failUnlessEqual(blur(15e3), 20e3)
-        self.failUnlessEqual(blur(20e3), 20e3)
-        self.failUnlessEqual(blur(1e6), 1e6)
-        self.failUnlessEqual(blur(1e6+1), 2e6)
-        self.failUnlessEqual(blur(1.5e6), 2e6)
-        self.failUnlessEqual(blur(2e6), 2e6)
-        self.failUnlessEqual(blur(900e6), 900e6)
-        self.failUnlessEqual(blur(1000e6), 1000e6)
-        self.failUnlessEqual(blur(1050e6), 1100e6)
-        self.failUnlessEqual(blur(1100e6), 1100e6)
-        self.failUnlessEqual(blur(1150e6), 1200e6)
+        self.failUnlessEqual(blur_size(0), 0)
+        self.failUnlessEqual(blur_size(1), 10e3)
+        self.failUnlessEqual(blur_size(10e3), 10e3)
+        self.failUnlessEqual(blur_size(10e3+1), 20e3)
+        self.failUnlessEqual(blur_size(15e3), 20e3)
+        self.failUnlessEqual(blur_size(20e3), 20e3)
+        self.failUnlessEqual(blur_size(1e6), 1e6)
+        self.failUnlessEqual(blur_size(1e6+1), 2e6)
+        self.failUnlessEqual(blur_size(1.5e6), 2e6)
+        self.failUnlessEqual(blur_size(2e6), 2e6)
+        self.failUnlessEqual(blur_size(900e6), 900e6)
+        self.failUnlessEqual(blur_size(1000e6), 1000e6)
+        self.failUnlessEqual(blur_size(1050e6), 1100e6)
+        self.failUnlessEqual(blur_size(1100e6), 1100e6)
+        self.failUnlessEqual(blur_size(1150e6), 1200e6)
 
     def test_register(self):
         p1 = self.new_protocol()
@@ -304,17 +306,22 @@ class _Transit:
         # hang up before sending anything
         p1.transport.loseConnection()
 
+
 class TransitWithLogs(_Transit, ServerBase, unittest.TestCase):
     log_requests = True
+
 
 class TransitWithoutLogs(_Transit, ServerBase, unittest.TestCase):
     log_requests = False
 
+
 class Usage(ServerBase, unittest.TestCase):
+
     def setUp(self):
         super(Usage, self).setUp()
         self._usage = MemoryUsageRecorder()
         self._transit_server.usage.add_backend(self._usage)
+##        self._transit_server.usage._blur_usage = None
 
     def test_empty(self):
         p1 = self.new_protocol()

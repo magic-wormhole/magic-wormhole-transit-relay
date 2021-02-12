@@ -6,11 +6,7 @@ class ServerBase:
 
     def setUp(self):
         self._lp = None
-        if self.log_requests:
-            blur_usage = None
-        else:
-            blur_usage = 60.0
-        self._setup_relay(blur_usage=blur_usage)
+        self._setup_relay(blur_usage=60.0 if self.log_requests else None)
         self._transit_server._debug_log = self.log_requests
 
     def _setup_relay(self, blur_usage=None, log_file=None, usage_db=None):
