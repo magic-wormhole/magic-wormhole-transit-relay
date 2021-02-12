@@ -4,7 +4,6 @@ from collections import defaultdict
 from twisted.python import log
 from twisted.internet import protocol
 from twisted.protocols.basic import LineReceiver
-from .database import get_db
 
 SECONDS = 1.0
 MINUTE = 60*SECONDS
@@ -79,7 +78,7 @@ class TransitConnection(LineReceiver):
             self.factory.usage,
         )
         self._state.connection_made(self)
-        self._log_requests = self.factory._log_requests
+##        self._log_requests = self.factory._log_requests
         try:
             self.transport.setTcpKeepAlive(True)
         except AttributeError:
@@ -131,8 +130,8 @@ class TransitConnection(LineReceiver):
         # there will be two producer/consumer pairs.
 
     def __buddy_disconnected(self):
-        if self._log_requests:
-            log.msg("buddy_disconnected %s" % self.describeToken())
+##        if self._log_requests:
+##            log.msg("buddy_disconnected %s" % self.describeToken())
         self._buddy = None
         self._mood = "jilted"
         self.transport.loseConnection()
@@ -210,117 +209,61 @@ class TransitConnection(LineReceiver):
 
 
 class Transit(protocol.ServerFactory):
-    # I manage pairs of simultaneous connections to a secondary TCP port,
-    # both forwarded to the other. Clients must begin each connection with
-    # "please relay TOKEN for SIDE\n" (or a legacy form without the "for
-    # SIDE"). Two connections match if they use the same TOKEN and have
-    # different SIDEs (the redundant connections are dropped when a match is
-    # made). Legacy connections match any with the same TOKEN, ignoring SIDE
-    # (so two legacy connections will match each other).
+    """
+    I manage pairs of simultaneous connections to a secondary TCP port,
+    both forwarded to the other. Clients must begin each connection with
+    "please relay TOKEN for SIDE\n" (or a legacy form without the "for
+    SIDE"). Two connections match if they use the same TOKEN and have
+    different SIDEs (the redundant connections are dropped when a match is
+    made). Legacy connections match any with the same TOKEN, ignoring SIDE
+    (so two legacy connections will match each other).
 
-    # I will send "ok\n" when the matching connection is established, or
-    # disconnect if no matching connection is made within MAX_WAIT_TIME
-    # seconds. I will disconnect if you send data before the "ok\n". All data
-    # you get after the "ok\n" will be from the other side. You will not
-    # receive "ok\n" until the other side has also connected and submitted a
-    # matching token (and differing SIDE).
+    I will send "ok\n" when the matching connection is established, or
+    disconnect if no matching connection is made within MAX_WAIT_TIME
+    seconds. I will disconnect if you send data before the "ok\n". All data
+    you get after the "ok\n" will be from the other side. You will not
+    receive "ok\n" until the other side has also connected and submitted a
+    matching token (and differing SIDE).
 
-    # In addition, the connections will be dropped after MAXLENGTH bytes have
-    # been sent by either side, or MAXTIME seconds have elapsed after the
-    # matching connections were established. A future API will reveal these
-    # limits to clients instead of causing mysterious spontaneous failures.
+    In addition, the connections will be dropped after MAXLENGTH bytes have
+    been sent by either side, or MAXTIME seconds have elapsed after the
+    matching connections were established. A future API will reveal these
+    limits to clients instead of causing mysterious spontaneous failures.
 
-    # These relay connections are not half-closeable (unlike full TCP
-    # connections, applications will not receive any data after half-closing
-    # their outgoing side). Applications must negotiate shutdown with their
-    # peer and not close the connection until all data has finished
-    # transferring in both directions. Applications which only need to send
-    # data in one direction can use close() as usual.
+    These relay connections are not half-closeable (unlike full TCP
+    connections, applications will not receive any data after half-closing
+    their outgoing side). Applications must negotiate shutdown with their
+    peer and not close the connection until all data has finished
+    transferring in both directions. Applications which only need to send
+    data in one direction can use close() as usual.
+    """
 
+    # TODO: unused
     MAX_WAIT_TIME = 30*SECONDS
+    # TODO: unused
     MAXLENGTH = 10*MB
+    # TODO: unused
     MAXTIME = 60*SECONDS
     protocol = TransitConnection
 
-    def __init__(self, blur_usage, log_file, usage_db):
+    def __init__(self, usage):
         self.active_connections = ActiveConnections()
         self.pending_requests = PendingRequests(self.active_connections)
-        self.usage = UsageTracker(blur_usage)
-        self._blur_usage = blur_usage
-        self._log_requests = blur_usage is None
-        if self._blur_usage:
-            log.msg("blurring access times to %d seconds" % self._blur_usage)
-            log.msg("not logging Transit connections to Twisted log")
-        else:
-            log.msg("not blurring access times")
+        self.usage = usage
+        if False:
+            # these logs-message should be made by the usage-tracker
+            # .. or in the "tap" setup?
+            if blur_usage:
+                log.msg("blurring access times to %d seconds" % self._blur_usage)
+                log.msg("not logging Transit connections to Twisted log")
+            else:
+                log.msg("not blurring access times")
         self._debug_log = False
-##        self._log_file = log_file
-        self._db = None
-        if usage_db:
-            self._db = get_db(usage_db)
-            self.usage.add_backend(DatabaseUsageRecorder(self._db))
-        if log_file:
-            self.usage.add_backend(LogFileUsageRecorder(log_file))
+
         self._rebooted = time.time()
-        # we don't track TransitConnections until they submit a token
-##        self._pending_requests = defaultdict(set) # token -> set((side, TransitConnection))
-##        self._active_connections = set() # TransitConnection
 
-    def transitFinished(self, tc, token, side, description):
-        if token in self._pending_requests:
-            side_tc = (side, tc)
-            self._pending_requests[token].discard(side_tc)
-            if not self._pending_requests[token]: # set is now empty
-                del self._pending_requests[token]
-        if self._debug_log:
-            log.msg("transitFinished %s" % (description,))
-        self._active_connections.discard(tc)
-        # we could update the usage database "current" row immediately, or wait
-        # until the 5-minute timer updates it. If we update it now, just after
-        # losing a connection, we should probably also update it just after
-        # establishing one (at the end of connection_got_token). For now I'm
-        # going to omit these, but maybe someday we'll turn them both on. The
-        # consequence is that a manual execution of the munin scripts ("munin
-        # run wormhole_transit_active") will give the wrong value just after a
-        # connect/disconnect event. Actual munin graphs should accurately
-        # report connections that last longer than the 5-minute sampling
-        # window, which is what we actually care about.
-        #self.timerUpdateStats()
-
-    def recordUsage(self, started, result, total_bytes,
-                    total_time, waiting_time):
-        if self._debug_log:
-            log.msg(format="Transit.recordUsage {bytes}B", bytes=total_bytes)
-        if self._blur_usage:
-            started = self._blur_usage * (started // self._blur_usage)
-            total_bytes = blur_size(total_bytes)
-        if self._log_file is not None:
-            data = {"started": started,
-                    "total_time": total_time,
-                    "waiting_time": waiting_time,
-                    "total_bytes": total_bytes,
-                    "mood": result,
-                    }
-            self._log_file.write(json.dumps(data)+"\n")
-            self._log_file.flush()
-        if self._db:
-            self._db.execute("INSERT INTO `usage`"
-                             " (`started`, `total_time`, `waiting_time`,"
-                             "  `total_bytes`, `result`)"
-                             " VALUES (?,?,?, ?,?)",
-                             (started, total_time, waiting_time,
-                              total_bytes, result))
-            # XXXX aaaaaAA! okay, so just this one type of usage also
-            # does some other random stats-stuff; need more
-            # refactorizing
-            self._update_stats()
-            self._db.commit()
-
-    def timerUpdateStats(self):
-        if self._db:
-            self._update_stats()
-            self._db.commit()
-
+    # XXX TODO self._rebooted and the below could be in a separate
+    # object? or in the DatabaseUsageRecorder .. but not here
     def _update_stats(self):
         # current status: should be zero when idle
         rebooted = self._rebooted

@@ -6,6 +6,7 @@ from twisted.application.internet import (TimerService,
                                           StreamServerEndpointService)
 from twisted.internet import endpoints
 from . import transit_server
+from .server_state import create_usage_tracker
 from .increase_rlimits import increase_rlimits
 
 LONGDESC = """\
@@ -32,13 +33,18 @@ class Options(usage.Options):
 def makeService(config, reactor=reactor):
     increase_rlimits()
     ep = endpoints.serverFromString(reactor, config["port"]) # to listen
-    log_file = (os.fdopen(int(config["log-fd"]), "w")
-                if config["log-fd"] is not None
-                else None)
-    f = transit_server.Transit(blur_usage=config["blur-usage"],
-                               log_file=log_file,
-                               usage_db=config["usage-db"])
+    log_file = (
+        os.fdopen(int(config["log-fd"]), "w")
+        if config["log-fd"] is not None
+        else None
+    )
+    usage = create_usage_tracker(
+        blur_usage=config["blur-usage"],
+        log_file=log_file,
+        usage_db=config["usage-db"],
+    )
+    factory = transit_server.Transit(usage)
     parent = MultiService()
-    StreamServerEndpointService(ep, f).setServiceParent(parent)
-    TimerService(5*60.0, f.timerUpdateStats).setServiceParent(parent)
+    StreamServerEndpointService(ep, factory).setServiceParent(parent)
+### FIXME TODO    TimerService(5*60.0, factory.timerUpdateStats).setServiceParent(parent)
     return parent

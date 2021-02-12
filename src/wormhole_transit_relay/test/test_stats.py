@@ -3,6 +3,7 @@ import os, io, json, sqlite3
 from unittest import mock
 from twisted.trial import unittest
 from ..transit_server import Transit
+from ..server_state import create_usage_tracker
 from .. import database
 
 class DB(unittest.TestCase):
@@ -17,7 +18,7 @@ class DB(unittest.TestCase):
         os.mkdir(d)
         usage_db = os.path.join(d, "usage.sqlite")
         with mock.patch("time.time", return_value=T+0):
-            t = Transit(blur_usage=None, log_file=None, usage_db=usage_db)
+            t = Transit(create_usage_tracker(blur_usage=None, log_file=None, usage_db=usage_db))
         db = self.open_db(usage_db)
         usage = list(t.usage._backends)[0]
 
@@ -55,7 +56,7 @@ class DB(unittest.TestCase):
                               waiting=0, connected=0))
 
     def test_no_db(self):
-        t = Transit(blur_usage=None, log_file=None, usage_db=None)
+        t = Transit(create_usage_tracker(blur_usage=None, log_file=None, usage_db=None))
         self.assertEqual(0, len(t.usage._backends))
 
 
@@ -63,7 +64,7 @@ class LogToStdout(unittest.TestCase):
     def test_log(self):
         # emit lines of JSON to log_file, if set
         log_file = io.StringIO()
-        t = Transit(blur_usage=None, log_file=log_file, usage_db=None)
+        t = Transit(create_usage_tracker(blur_usage=None, log_file=log_file, usage_db=None))
         with mock.patch("time.time", return_value=133):
             t.usage.record(
                 started=123,
@@ -81,7 +82,7 @@ class LogToStdout(unittest.TestCase):
         # if blurring is enabled, timestamps should be rounded to the
         # requested amount, and sizes should be rounded up too
         log_file = io.StringIO()
-        t = Transit(blur_usage=60, log_file=log_file, usage_db=None)
+        t = Transit(create_usage_tracker(blur_usage=60, log_file=log_file, usage_db=None))
 
         with mock.patch("time.time", return_value=123 + 10):
             t.usage.record(
@@ -98,7 +99,7 @@ class LogToStdout(unittest.TestCase):
                           "mood": "happy"})
 
     def test_do_not_log(self):
-        t = Transit(blur_usage=60, log_file=None, usage_db=None)
+        t = Transit(create_usage_tracker(blur_usage=60, log_file=None, usage_db=None))
         t.usage.record(
             started=123,
             buddy_started=124,

@@ -8,6 +8,7 @@ from zope.interface import (
     Attribute,
     implementer,
 )
+from .database import get_db
 
 
 class ITransitClient(Interface):
@@ -167,12 +168,41 @@ def blur_size(size):
     return round_to(size, 100e6)
 
 
+def create_usage_tracker(blur_usage, log_file, usage_db):
+    """
+    :param int blur_usage: see UsageTracker
+
+    :param log_file: None or a file-like object to write JSON-encoded
+        lines of usage information to.
+
+    :param usage_db: None or an sqlite3 database connection
+
+    :returns: a new UsageTracker instance configured with backends.
+    """
+    tracker = UsageTracker(blur_usage)
+    if usage_db:
+        db = get_db(usage_db)
+        tracker.add_backend(DatabaseUsageRecorder(db))
+    if log_file:
+        tracker.add_backend(LogFileUsageRecorder(log_file))
+    return tracker
+
+
+
+
 class UsageTracker(object):
     """
     Tracks usage statistics of connections
     """
 
     def __init__(self, blur_usage):
+        """
+        :param int blur_usage: None or the number of seconds to use as a
+            window around which to blur time statistics (e.g. "60" means times
+            will be rounded to 1 minute intervals). When blur_usage is
+            non-zero, sizes will also be rounded into buckets of "one
+            megabyte", "one gigabyte" or "lots"
+        """
         self._backends = set()
         self._blur_usage = blur_usage
 
@@ -223,6 +253,9 @@ class UsageTracker(object):
             started = self._blur_usage * (started // self._blur_usage)
             total_bytes = blur_size(total_bytes)
 
+        # This is "a dict" instead of "kwargs" because we have to make
+        # it into a dict for the log use-case and in-memory/testing
+        # use-case anyway so this is less repeats of the names.
         self._notify_backends({
             "started": started,
             "total_time": total_time,
@@ -233,7 +266,7 @@ class UsageTracker(object):
 
     def _notify_backends(self, data):
         """
-        Internal helper. Tell every backend we have about a new usage.
+        Internal helper. Tell every backend we have about a new usage record.
         """
         for backend in self._backends:
             backend.record_usage(**data)
@@ -241,8 +274,11 @@ class UsageTracker(object):
 
 class ActiveConnections(object):
     """
-    Tracks active connections. A connection is 'active' when both
-    sides have shown up and they are glued together.
+    Tracks active connections.
+
+    A connection is 'active' when both sides have shown up and they
+    are glued together (and thus could be passing data back and forth
+    if any is flowing).
     """
     def __init__(self):
         self._connections = set()
@@ -268,12 +304,20 @@ class ActiveConnections(object):
 
 class PendingRequests(object):
     """
-    Tracks the tokens we have received from client connections and
-    maps them to their partner connections for requests that haven't
-    yet been 'glued together' (that is, one side hasn't yet shown up).
+    Tracks outstanding (non-"active") requests.
+
+    We register client connections against the tokens we have
+    received. When the other side shows up we can thus match it to the
+    correct partner connection. At this point, the connection becomes
+    "active" is and is thus no longer "pending" and so will no longer
+    be in this collection.
     """
 
     def __init__(self, active_connections):
+        """
+        :param active_connections: an instance of ActiveConnections where
+            connections are put when both sides arrive.
+        """
         self._requests = defaultdict(set) # token -> set((side, TransitConnection))
         self._active = active_connections
 
@@ -285,15 +329,22 @@ class PendingRequests(object):
         if token in self._requests:
             self._requests[token].discard((side, tc))
             if not self._requests[token]:
+                # no more sides; token is dead
                 del self._requests[token]
         self._active.unregister(tc)
 
-    def register_token(self, token, new_side, new_tc):
+    def register(self, token, new_side, new_tc):
         """
         A client has connected and successfully offered a token (and
         optional 'side' token). If this is the first one for this
         token, we merely remember it. If it is the second side for
         this token we connect them together.
+
+        :param bytes token: the token for this connection.
+
+        :param bytes new_side: None or the side token for this connection
+
+        :param TransitServerState new_tc: the state-machine of the connection
 
         :returns bool: True if we are the first side to register this
             token
@@ -562,7 +613,7 @@ class TransitServerState(object):
         """
         self._token = token
         self._side = side
-        self._first = self._pending_requests.register_token(token, side, self)
+        self._first = self._pending_requests.register(token, side, self)
 
     @_machine.state(initial=True)
     def listening(self):
