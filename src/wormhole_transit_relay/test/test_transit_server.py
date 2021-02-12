@@ -3,6 +3,7 @@ from binascii import hexlify
 from twisted.trial import unittest
 from .common import ServerBase
 from .. import transit_server
+from ..server_state import MemoryUsageRecorder
 
 def handshake(token, side=None):
     hs = b"please relay " + hexlify(token)
@@ -341,8 +342,8 @@ class Usage(ServerBase, unittest.TestCase):
 
     def setUp(self):
         super(Usage, self).setUp()
-        self._usage = []
-        self._transit_server.usage.json_record = self._usage.append
+        self._usage = MemoryUsageRecorder()
+        self._transit_server.usage.add_backend(self._usage)
 
     def test_empty(self):
         p1 = self.new_protocol()
@@ -351,8 +352,8 @@ class Usage(ServerBase, unittest.TestCase):
         self.flush()
 
         # that will log the "empty" usage event
-        self.assertEqual(len(self._usage), 1, self._usage)
-        self.assertEqual(self._usage[0]["mood"], "empty", self._usage)
+        self.assertEqual(len(self._usage.events), 1, self._usage)
+        self.assertEqual(self._usage.events[0]["mood"], "empty", self._usage)
 
     def test_short(self):
         p1 = self.new_protocol()
@@ -362,8 +363,8 @@ class Usage(ServerBase, unittest.TestCase):
         self.flush()
 
         # that will log the "empty" usage event
-        self.assertEqual(len(self._usage), 1, self._usage)
-        self.assertEqual("empty", self._usage[0]["mood"])
+        self.assertEqual(len(self._usage.events), 1, self._usage)
+        self.assertEqual("empty", self._usage.events[0]["mood"])
 
     def test_errory(self):
         p1 = self.new_protocol()
@@ -372,8 +373,8 @@ class Usage(ServerBase, unittest.TestCase):
         self.flush()
         # that will log the "errory" usage event, then drop the connection
         p1.disconnect()
-        self.assertEqual(len(self._usage), 1, self._usage)
-        self.assertEqual(self._usage[0]["mood"], "errory", self._usage)
+        self.assertEqual(len(self._usage.events), 1, self._usage)
+        self.assertEqual(self._usage.events[0]["mood"], "errory", self._usage)
 
     def test_lonely(self):
         p1 = self.new_protocol()
@@ -386,9 +387,9 @@ class Usage(ServerBase, unittest.TestCase):
         p1.disconnect()
         self.flush()
 
-        self.assertEqual(len(self._usage), 1, self._usage)
-        self.assertEqual(self._usage[0]["mood"], "lonely", self._usage)
-        self.assertIdentical(self._usage[0]["waiting_time"], None)
+        self.assertEqual(len(self._usage.events), 1, self._usage)
+        self.assertEqual(self._usage.events[0]["mood"], "lonely", self._usage)
+        self.assertIdentical(self._usage.events[0]["waiting_time"], None)
 
     def test_one_happy_one_jilted(self):
         p1 = self.new_protocol()
@@ -402,7 +403,7 @@ class Usage(ServerBase, unittest.TestCase):
         p2.send(handshake(token1, side=side2))
         self.flush()
 
-        self.assertEqual(self._usage, []) # no events yet
+        self.assertEqual(self._usage.events, []) # no events yet
 
         p1.send(b"\x00" * 13)
         self.flush()
@@ -412,10 +413,10 @@ class Usage(ServerBase, unittest.TestCase):
         p1.disconnect()
         self.flush()
 
-        self.assertEqual(len(self._usage), 1, self._usage)
-        self.assertEqual(self._usage[0]["mood"], "happy", self._usage)
-        self.assertEqual(self._usage[0]["total_bytes"], 20)
-        self.assertNotIdentical(self._usage[0]["waiting_time"], None)
+        self.assertEqual(len(self._usage.events), 1, self._usage)
+        self.assertEqual(self._usage.events[0]["mood"], "happy", self._usage)
+        self.assertEqual(self._usage.events[0]["total_bytes"], 20)
+        self.assertNotIdentical(self._usage.events[0]["waiting_time"], None)
 
     def test_redundant(self):
         p1a = self.new_protocol()
@@ -438,18 +439,18 @@ class Usage(ServerBase, unittest.TestCase):
         p1c.disconnect()
         self.flush()
 
-        self.assertEqual(len(self._usage), 1, self._usage)
-        self.assertEqual(self._usage[0]["mood"], "lonely")
+        self.assertEqual(len(self._usage.events), 1, self._usage)
+        self.assertEqual(self._usage.events[0]["mood"], "lonely")
 
         p2.send(handshake(token1, side=side2))
         self.flush()
         self.assertEqual(len(self._transit_server.pending_requests._requests), 0)
-        self.assertEqual(len(self._usage), 2, self._usage)
-        self.assertEqual(self._usage[1]["mood"], "redundant")
+        self.assertEqual(len(self._usage.events), 2, self._usage)
+        self.assertEqual(self._usage.events[1]["mood"], "redundant")
 
         # one of the these is unecessary, but probably harmless
         p1a.disconnect()
         p1b.disconnect()
         self.flush()
-        self.assertEqual(len(self._usage), 3, self._usage)
-        self.assertEqual(self._usage[2]["mood"], "happy")
+        self.assertEqual(len(self._usage.events), 3, self._usage)
+        self.assertEqual(self._usage.events[2]["mood"], "happy")

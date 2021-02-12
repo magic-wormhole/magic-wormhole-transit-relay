@@ -67,10 +67,104 @@ class TestClient(object):
         print("disconnect_partner: {}".format(id(self._partner)))
 
 
+class IUsageWriter(Interface):
+    """
+    Records actual usage statistics in some way
+    """
+
+    def record_usage(started=None, total_time=None, waiting_time=None, total_bytes=None, mood=None):
+        """
+        :param int started: timestemp when this connection began
+
+        :param float total_time: total seconds this connection lasted
+
+        :param float waiting_time: None or the total seconds one side
+            waited for the other
+
+        :param int total_bytes: the total bytes sent. In case the
+            connection was concluded successfully, only one side will
+            record the total bytes (but count both).
+
+        :param str mood: the 'mood' of the connection
+        """
+
+
+@implementer(IUsageWriter)
+class MemoryUsageRecorder:
+
+    def __init__(self):
+        self.events = []
+
+    def record_usage(self, started=None, total_time=None, waiting_time=None, total_bytes=None, mood=None):
+        """
+        IUsageWriter.
+        """
+        data = {
+            "started": started,
+            "total_time": total_time,
+            "waiting_time": waiting_time,
+            "total_bytes": total_bytes,
+            "mood": mood,
+        }
+        self.events.append(data)
+
+
+@implementer(IUsageWriter)
+class LogFileUsageRecorder:
+
+    def __init__(self, writable_file):
+        self._file = writable_file
+
+    def record_usage(self, started=None, total_time=None, waiting_time=None, total_bytes=None, mood=None):
+        """
+        IUsageWriter.
+        """
+        data = {
+            "started": started,
+            "total_time": total_time,
+            "waiting_time": waiting_time,
+            "total_bytes": total_bytes,
+            "mood": mood,
+        }
+        self._file.write(json.dumps(data))
+
+
+
+@implementer(IUsageWriter)
+class DatabaseUsageRecorder:
+
+    def __init__(self, _db):
+        self._db = db
+
+    def record_usage(self, started=None, total_time=None, waiting_time=None, total_bytes=None, mood=None):
+        """
+        IUsageWriter.
+        """
+
+
 class UsageRecorder(object):
     """
     Tracks usage statistics of connections
     """
+
+    def __init__(self):
+        self._backends = set()
+
+    def add_backend(self, backend):
+        """
+        Add a new backend.
+
+        :param IUsageWriter backend: the backend to add
+        """
+        self._backends.add(backend)
+
+    def remove_backend(self, backend):
+        """
+        Remove an existing backend
+
+        :param IUsageWriter backend: the backend to remove
+        """
+        self._backends.remove(backend)
 
     def record(self, started, buddy_started, result, bytes_sent, buddy_bytes):
         """
@@ -102,7 +196,7 @@ class UsageRecorder(object):
         # probably want like "backends" here or something? original
         # code logs some JSON (maybe) and writes to a database (maybe)
         # and tests record in memory.
-        self.json_record({
+        self._notify_backends({
             "started": started,
             "total_time": total_time,
             "waiting_time": waiting_time,
@@ -110,8 +204,12 @@ class UsageRecorder(object):
             "mood": result,
         })
 
-    def json_record(self, data):
-        pass
+    def _notify_backends(self, data):
+        """
+        Internal helper. Tell every backend we have about a new usage.
+        """
+        for backend in self._backends:
+            backend.record_usage(**data)
 
 
 class ActiveConnections(object):
