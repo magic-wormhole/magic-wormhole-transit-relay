@@ -37,38 +37,6 @@ class ITransitClient(Interface):
         """
 
 
-@implementer(ITransitClient)
-class TestClient(object):
-    _partner = None
-    _data = b""
-    _started_time = time.time()
-
-    @property
-    def started_time(self):
-        return _started_time
-
-    def send_to_partner(self, data):
-        print("{} GOT:{}".format(id(self), repr(data)))
-        if self._partner:
-            self._partner._client.send(data)
-
-    def send(self, data):
-        print("{} SEND:{}".format(id(self), repr(data)))
-        self._data += data
-
-    def disconnect(self):
-        print("disconnect")
-
-    def connect_partner(self, other):
-        print("connect_partner: {} <--> {}".format(id(self), id(other)))
-        assert self._partner is None, "double partner"
-        self._partner = other
-
-    def disconnect_partner(self):
-        assert self._partner is not None, "no partner"
-        print("disconnect_partner: {}".format(id(self._partner)))
-
-
 class IUsageWriter(Interface):
     """
     Records actual usage statistics in some way
@@ -716,44 +684,3 @@ class TransitServerState(object):
         enter=done,
         outputs=[],
     )
-
-
-
-
-# actions:
-# - send("ok")
-# - send("bad handshake")
-# - disconnect
-# - ...
-
-if __name__ == "__main__":
-    active = ActiveConnections()
-    pending = PendingRequests(active)
-
-    server0 = TransitServerState(pending)
-    client0 =  TestClient()
-    server1 = TransitServerState(pending)
-    client1 =  TestClient()
-    server0.connection_made(client0)
-    server0.please_relay(b"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-
-    # this would be an error, because our partner hasn't shown up yet
-    # print(server0.got_bytes(b"asdf"))
-
-    print("about to relay client1")
-    server1.connection_made(client1)
-    server1.please_relay(b"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-    print("done")
-
-    # XXX the PendingRequests stuff should do this, going "by hand" for now
-#    server0.got_partner(client1)
-#    server1.got_partner(client0)
-
-    # should be connected now
-    server0.got_bytes(b"asdf")
-    # client1 should receive b"asdf"
-
-    server0.connection_lost()
-    print("----[ received data on both sides ]----")
-    print("client0:{}".format(repr(client0._data)))
-    print("client1:{}".format(repr(client1._data)))
