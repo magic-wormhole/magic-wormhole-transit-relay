@@ -185,7 +185,8 @@ class PendingRequests(object):
                     # can happen if the connection hint contains multiple
                     # addresses (we don't currently support those, but it'd
                     # probably be useful in the future).
-                    leftover_tc.disconnect_redundant()
+                    ##leftover_tc.disconnect_redundant()
+                    leftover_tc.partner_connection_lost()
                 self._requests.pop(token, None)
 
                 # glue the two ends together
@@ -379,6 +380,10 @@ class TransitServerState(object):
         self._mood = "lonely"
 
     @_machine.output()
+    def _mood_redundant(self):
+        self._mood = "redundant"
+
+    @_machine.output()
     def _mood_impatient(self):
         self._mood = "impatient"
 
@@ -500,6 +505,11 @@ class TransitServerState(object):
         got_bytes,
         enter=done,
         outputs=[_mood_impatient, _send_impatient, _disconnect, _unregister, _record_usage],
+    )
+    wait_partner.upon(
+        partner_connection_lost,
+        enter=done,
+        outputs=[_mood_redundant, _disconnect, _record_usage],
     )
 
     relaying.upon(
