@@ -415,7 +415,7 @@ class Usage(ServerBase, unittest.TestCase):
         self.assertEqual(len(self._usage), 1, self._usage)
         self.assertEqual(self._usage[0]["mood"], "happy", self._usage)
         self.assertEqual(self._usage[0]["total_bytes"], 20)
-        self.assertNotIdentical(waiting_time, None)
+        self.assertNotIdentical(self._usage[0]["waiting_time"], None)
 
     def test_redundant(self):
         p1a = self.new_protocol()
