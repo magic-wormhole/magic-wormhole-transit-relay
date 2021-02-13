@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-import os, io, json, sqlite3
+import os, io, json
 from unittest import mock
 from twisted.trial import unittest
 from ..transit_server import Transit
