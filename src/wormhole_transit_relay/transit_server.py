@@ -112,41 +112,23 @@ class TransitConnection(LineReceiver):
         self._state.got_bytes(data)
 
     def _got_handshake(self, token, side):
-        self._state.please_relay_for_side(token, side)
-        # self._mood = "lonely" # until buddy connects
+        if side is not None:
+            self._state.please_relay_for_side(token, side)
+        else:
+            self._state.please_relay(token)
         self.setRawMode()
-
-    def __buddy_connected(self, them):
-        self._buddy = them
-        self._mood = "happy"
-        self.sendLine(b"ok")
-        self._sent_ok = True
-        # Connect the two as a producer/consumer pair. We use streaming=True,
-        # so this expects the IPushProducer interface, and uses
-        # pauseProducing() to throttle, and resumeProducing() to unthrottle.
-        self._buddy.transport.registerProducer(self.transport, True)
-        # The Transit object calls buddy_connected() on both protocols, so
-        # there will be two producer/consumer pairs.
-
-    def __buddy_disconnected(self):
-##        if self._log_requests:
-##            log.msg("buddy_disconnected %s" % self.describeToken())
-        self._buddy = None
-        self._mood = "jilted"
-        self.transport.loseConnection()
 
     def disconnect_error(self):
         # we haven't finished the handshake, so there are no tokens tracking
         # us
-        self._mood = "errory"
         self.transport.loseConnection()
+        # XXX probably should be logged by state?
         if self.factory._debug_log:
             log.msg("transitFailed %r" % self)
 
     def disconnect_redundant(self):
         # this is called if a buddy connected and we were found unnecessary.
         # Any token-tracking cleanup will have been done before we're called.
-        self._mood = "redundant"
         self.transport.loseConnection()
 
     def connectionLost(self, reason):
