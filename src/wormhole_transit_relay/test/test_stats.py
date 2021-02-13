@@ -9,19 +9,31 @@ from .. import database
 class DB(unittest.TestCase):
 
     def test_db(self):
+
         T = 1519075308.0
+
+        class Timer:
+            t = T
+            def __call__(self):
+                return self.t
+        get_time = Timer()
+
         d = self.mktemp()
         os.mkdir(d)
         usage_db = os.path.join(d, "usage.sqlite")
         db = database.get_db(usage_db)
-        with mock.patch("time.time", return_value=T+0):
-            t = Transit(create_usage_tracker(blur_usage=None, log_file=None, usage_db=db))
+        t = Transit(
+            create_usage_tracker(blur_usage=None, log_file=None, usage_db=db),
+            get_time,
+        )
         self.assertEqual(len(t.usage._backends), 1)
         usage = list(t.usage._backends)[0]
 
-        with mock.patch("time.time", return_value=T+1):
-            usage.record_usage(started=123, mood="happy", total_bytes=100,
-                          total_time=10, waiting_time=2)
+        get_time.t = T + 1
+        usage.record_usage(started=123, mood="happy", total_bytes=100,
+                           total_time=10, waiting_time=2)
+        t.update_stats()
+
         self.assertEqual(db.execute("SELECT * FROM `usage`").fetchall(),
                          [dict(result="happy", started=123,
                                total_bytes=100, total_time=10, waiting_time=2),
@@ -31,9 +43,10 @@ class DB(unittest.TestCase):
                               incomplete_bytes=0,
                               waiting=0, connected=0))
 
-        with mock.patch("time.time", return_value=T+2):
-            usage.record_usage(started=150, mood="errory", total_bytes=200,
-                          total_time=11, waiting_time=3)
+        get_time.t = T + 2
+        usage.record_usage(started=150, mood="errory", total_bytes=200,
+                           total_time=11, waiting_time=3)
+        t.update_stats()
         self.assertEqual(db.execute("SELECT * FROM `usage`").fetchall(),
                          [dict(result="happy", started=123,
                                total_bytes=100, total_time=10, waiting_time=2),
@@ -45,15 +58,18 @@ class DB(unittest.TestCase):
                               incomplete_bytes=0,
                               waiting=0, connected=0))
 
-        with mock.patch("time.time", return_value=T+3):
-            t.timerUpdateStats()
+        get_time.t = T + 3
+        t.update_stats()
         self.assertEqual(db.execute("SELECT * FROM `current`").fetchone(),
                          dict(rebooted=T+0, updated=T+3,
                               incomplete_bytes=0,
                               waiting=0, connected=0))
 
     def test_no_db(self):
-        t = Transit(create_usage_tracker(blur_usage=None, log_file=None, usage_db=None))
+        t = Transit(
+            create_usage_tracker(blur_usage=None, log_file=None, usage_db=None),
+            lambda: 0,
+        )
         self.assertEqual(0, len(t.usage._backends))
 
 
@@ -61,7 +77,10 @@ class LogToStdout(unittest.TestCase):
     def test_log(self):
         # emit lines of JSON to log_file, if set
         log_file = io.StringIO()
-        t = Transit(create_usage_tracker(blur_usage=None, log_file=log_file, usage_db=None))
+        t = Transit(
+            create_usage_tracker(blur_usage=None, log_file=log_file, usage_db=None),
+            lambda: 0,
+        )
         with mock.patch("time.time", return_value=133):
             t.usage.record(
                 started=123,
@@ -79,7 +98,10 @@ class LogToStdout(unittest.TestCase):
         # if blurring is enabled, timestamps should be rounded to the
         # requested amount, and sizes should be rounded up too
         log_file = io.StringIO()
-        t = Transit(create_usage_tracker(blur_usage=60, log_file=log_file, usage_db=None))
+        t = Transit(
+            create_usage_tracker(blur_usage=60, log_file=log_file, usage_db=None),
+            lambda: 0,
+        )
 
         with mock.patch("time.time", return_value=123 + 10):
             t.usage.record(
@@ -96,7 +118,10 @@ class LogToStdout(unittest.TestCase):
                           "mood": "happy"})
 
     def test_do_not_log(self):
-        t = Transit(create_usage_tracker(blur_usage=60, log_file=None, usage_db=None))
+        t = Transit(
+            create_usage_tracker(blur_usage=60, log_file=None, usage_db=None),
+            lambda: 0,
+        )
         t.usage.record(
             started=123,
             buddy_started=124,

@@ -16,7 +16,7 @@ class ServerBase:
             log_file=log_file,
             usage_db=usage_db,
         )
-        self._transit_server = Transit(usage)
+        self._transit_server = Transit(usage, lambda: 123456789.0)
 
     def new_protocol(self):
         protocol = self._transit_server.buildProtocol(('127.0.0.1', 0))

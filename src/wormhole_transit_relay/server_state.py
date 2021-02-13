@@ -118,8 +118,10 @@ class DatabaseUsageRecorder:
             " VALUES (?,?,?,?,?)",
             (started, total_time, waiting_time, total_bytes, mood)
         )
-        # XXX FIXME see comment in transit_server
-        #self._update_stats()
+        # original code did "self._update_stats()" here, thus causing
+        # "global" stats update on every connection update .. should
+        # we repeat this behavior, or really only record every
+        # 60-seconds with the timer?
         self._db.commit()
 
 
@@ -226,6 +228,26 @@ class UsageTracker(object):
             "total_bytes": total_bytes,
             "mood": result,
         })
+
+    def update_stats(self, rebooted, updated, connected, waiting,
+                     incomplete_bytes):
+        """
+        Update general statistics.
+        """
+        # in original code, this is only recorded in the database
+        # .. perhaps a better way to do this, but ..
+        for backend in self._backends:
+            if isinstance(backend, DatabaseUsageRecorder):
+                backend._db.execute("DELETE FROM `current`")
+                backend._db.execute(
+                    "INSERT INTO `current`"
+                    " (`rebooted`, `updated`, `connected`, `waiting`,"
+                    "  `incomplete_bytes`)"
+                    " VALUES (?, ?, ?, ?, ?)",
+                    (int(rebooted), int(updated), connected, waiting,
+                     incomplete_bytes)
+                )
+
 
     def _notify_backends(self, data):
         """

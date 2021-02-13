@@ -193,33 +193,28 @@ class Transit(protocol.ServerFactory):
     MAXTIME = 60*SECONDS
     protocol = TransitConnection
 
-    def __init__(self, usage):
+    def __init__(self, usage, get_timestamp):
         self.active_connections = ActiveConnections()
         self.pending_requests = PendingRequests(self.active_connections)
         self.usage = usage
         self._debug_log = False
+        self._timestamp = get_timestamp
+        self._rebooted = self._timestamp()
 
-        self._rebooted = time.time()
-
-    # XXX TODO self._rebooted and the below could be in a separate
-    # object? or in the DatabaseUsageRecorder .. but not here
-    def _update_stats(self):
-        # current status: should be zero when idle
-        rebooted = self._rebooted
-        updated = time.time()
-        connected = len(self._active_connections) / 2
+    def update_stats(self):
         # TODO: when a connection is half-closed, len(active) will be odd. a
         # moment later (hopefully) the other side will disconnect, but
         # _update_stats isn't updated until later.
-        waiting = len(self._pending_requests)
+
         # "waiting" doesn't count multiple parallel connections from the same
         # side
-        incomplete_bytes = sum(tc._total_sent
-                               for tc in self._active_connections)
-        self._db.execute("DELETE FROM `current`")
-        self._db.execute("INSERT INTO `current`"
-                         " (`rebooted`, `updated`, `connected`, `waiting`,"
-                         "  `incomplete_bytes`)"
-                         " VALUES (?, ?, ?, ?, ?)",
-                         (rebooted, updated, connected, waiting,
-                          incomplete_bytes))
+        self.usage.update_stats(
+            rebooted=self._rebooted,
+            updated=self._timestamp(),
+            connected=len(self.active_connections._connections),
+            waiting=len(self.pending_requests._requests),
+            incomplete_bytes=sum(
+                tc._total_sent
+                for tc in self.active_connections._connections
+            ),
+        )

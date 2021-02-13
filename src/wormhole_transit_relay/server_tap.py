@@ -44,8 +44,8 @@ def makeService(config, reactor=reactor):
         log_file=log_file,
         usage_db=db,
     )
-    factory = transit_server.Transit(usage)
+    factory = transit_server.Transit(usage, reactor.seconds)
     parent = MultiService()
     StreamServerEndpointService(ep, factory).setServiceParent(parent)
-### FIXME TODO    TimerService(5*60.0, factory.timerUpdateStats).setServiceParent(parent)
+    TimerService(5*60.0, factory.update_stats).setServiceParent(parent)
     return parent
