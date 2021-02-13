@@ -1,6 +1,6 @@
 from __future__ import print_function, unicode_literals
-import re, time, json
-from collections import defaultdict
+import re
+import time
 from twisted.python import log
 from twisted.internet import protocol
 from twisted.protocols.basic import LineReceiver
@@ -16,9 +16,6 @@ from wormhole_transit_relay.server_state import (
     TransitServerState,
     PendingRequests,
     ActiveConnections,
-    UsageTracker,
-    DatabaseUsageRecorder,
-    LogFileUsageRecorder,
     ITransitClient,
 )
 from zope.interface import implementer
@@ -152,59 +149,9 @@ class TransitConnection(LineReceiver):
 
     def connectionLost(self, reason):
         self._state.connection_lost()
-
-        # XXX FIXME record usage
-
-        if False:
-            # Record usage. There are eight cases:
-            # * n0: we haven't gotten a full handshake yet (empty)
-            # * n1: the handshake failed, not a real client (errory)
-            # * n2: real client disconnected before any buddy appeared (lonely)
-            # * n3: real client closed as redundant after buddy appears (redundant)
-            # * n4: real client connected first, buddy closes first (jilted)
-            # * n5: real client connected first, buddy close last (happy)
-            # * n6: real client connected last, buddy closes first (jilted)
-            # * n7: real client connected last, buddy closes last (happy)
-
-            # * non-connected clients (0,1,2,3) always write a usage record
-            # * for connected clients, whoever disconnects first gets to write the
-            #   usage record (5, 7). The last disconnect doesn't write a record.
-
-            if self._mood == "empty": # 0
-                assert not self._buddy
-                self.factory.recordUsage(self._started, "empty", 0,
-                                         total_time, None)
-            elif self._mood == "errory": # 1
-                assert not self._buddy
-                self.factory.recordUsage(self._started, "errory", 0,
-                                         total_time, None)
-            elif self._mood == "redundant": # 3
-                assert not self._buddy
-                self.factory.recordUsage(self._started, "redundant", 0,
-                                         total_time, None)
-            elif self._mood == "jilted": # 4 or 6
-                # we were connected, but our buddy hung up on us. They record the
-                # usage event, we do not
-                pass
-            elif self._mood == "lonely": # 2
-                assert not self._buddy
-                self.factory.recordUsage(self._started, "lonely", 0,
-                                         total_time, None)
-            else: # 5 or 7
-                # we were connected, we hung up first. We record the event.
-                assert self._mood == "happy", self._mood
-                assert self._buddy
-                starts = [self._started, self._buddy._started]
-                total_time = finished - min(starts)
-                waiting_time = max(starts) - min(starts)
-                total_bytes = self._total_sent + self._buddy._total_sent
-                self.factory.recordUsage(self._started, "happy", total_bytes,
-                                         total_time, waiting_time)
-
-            if self._buddy:
-                self._buddy.buddy_disconnected()
-    #        self.factory.transitFinished(self, self._got_token, self._got_side,
-    #                                     self.describeToken())
+# XXX this probably resulted in a log message we've not refactored yet
+#        self.factory.transitFinished(self, self._got_token, self._got_side,
+#                                     self.describeToken())
 
 
 
