@@ -52,6 +52,7 @@ class TransitConnection(LineReceiver):
         """
         ITransitClient API
         """
+        print("buddy_disconnected {}".format(self._buddy.get_token()))
         self._buddy._client.transport.loseConnection()
         self._buddy = None
 
