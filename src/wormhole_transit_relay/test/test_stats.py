@@ -7,19 +7,16 @@ from ..server_state import create_usage_tracker
 from .. import database
 
 class DB(unittest.TestCase):
-    def open_db(self, dbfile):
-        db = sqlite3.connect(dbfile)
-        database._initialize_db_connection(db)
-        return db
 
     def test_db(self):
         T = 1519075308.0
         d = self.mktemp()
         os.mkdir(d)
         usage_db = os.path.join(d, "usage.sqlite")
+        db = database.get_db(usage_db)
         with mock.patch("time.time", return_value=T+0):
-            t = Transit(create_usage_tracker(blur_usage=None, log_file=None, usage_db=usage_db))
-        db = self.open_db(usage_db)
+            t = Transit(create_usage_tracker(blur_usage=None, log_file=None, usage_db=db))
+        self.assertEqual(len(t.usage._backends), 1)
         usage = list(t.usage._backends)[0]
 
         with mock.patch("time.time", return_value=T+1):

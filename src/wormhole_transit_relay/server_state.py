@@ -149,13 +149,10 @@ def create_usage_tracker(blur_usage, log_file, usage_db):
     """
     tracker = UsageTracker(blur_usage)
     if usage_db:
-        db = get_db(usage_db)
-        tracker.add_backend(DatabaseUsageRecorder(db))
+        tracker.add_backend(DatabaseUsageRecorder(usage_db))
     if log_file:
         tracker.add_backend(LogFileUsageRecorder(log_file))
     return tracker
-
-
 
 
 class UsageTracker(object):

@@ -38,10 +38,11 @@ def makeService(config, reactor=reactor):
         if config["log-fd"] is not None
         else None
     )
+    db = None if config["usage-db"] is None else get_db(config["usage-db"])
     usage = create_usage_tracker(
         blur_usage=config["blur-usage"],
         log_file=log_file,
-        usage_db=config["usage-db"],
+        usage_db=db,
     )
     factory = transit_server.Transit(usage)
     parent = MultiService()
