@@ -407,12 +407,6 @@ class TransitServerState(object):
             d += "-<unsided>"
         return d
 
-    def get_mood(self):
-        """
-        :returns str: description of the current 'mood' of the connection
-        """
-        return self._mood
-
     @_machine.input()
     def connection_made(self, client):
         """
