@@ -2,7 +2,6 @@ from __future__ import print_function, unicode_literals
 from binascii import hexlify
 from twisted.trial import unittest
 from .common import ServerBase
-from .. import transit_server
 from ..server_state import (
     MemoryUsageRecorder,
     blur_size,

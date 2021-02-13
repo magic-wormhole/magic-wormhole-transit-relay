@@ -90,7 +90,7 @@ class LogToStdout(unittest.TestCase):
                 buddy_started=125,
                 result="happy",
                 bytes_sent=11999,
-                buddy_bytes=8001,
+                buddy_bytes=0,
             )
         print(log_file.getvalue())
         self.assertEqual(json.loads(log_file.getvalue()),
