@@ -8,6 +8,7 @@ from zope.interface import (
     Attribute,
     implementer,
 )
+from twisted.python import log
 from .database import get_db
 
 
@@ -170,6 +171,11 @@ class UsageTracker(object):
         """
         self._backends = set()
         self._blur_usage = blur_usage
+        if blur_usage:
+            log.msg("blurring access times to %d seconds" % self._blur_usage)
+## XXX            log.msg("not logging Transit connections to Twisted log")
+        else:
+            log.msg("not blurring access times")
 
     def add_backend(self, backend):
         """

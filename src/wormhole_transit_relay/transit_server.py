@@ -250,14 +250,6 @@ class Transit(protocol.ServerFactory):
         self.active_connections = ActiveConnections()
         self.pending_requests = PendingRequests(self.active_connections)
         self.usage = usage
-        if False:
-            # these logs-message should be made by the usage-tracker
-            # .. or in the "tap" setup?
-            if blur_usage:
-                log.msg("blurring access times to %d seconds" % self._blur_usage)
-                log.msg("not logging Transit connections to Twisted log")
-            else:
-                log.msg("not blurring access times")
         self._debug_log = False
 
         self._rebooted = time.time()
