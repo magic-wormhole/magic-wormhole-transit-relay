@@ -348,7 +348,6 @@ class Usage(ServerBase, unittest.TestCase):
         super(Usage, self).setUp()
         self._usage = MemoryUsageRecorder()
         self._transit_server.usage.add_backend(self._usage)
-##        self._transit_server.usage._blur_usage = None
 
     def test_empty(self):
         p1 = self.new_protocol()
