@@ -692,11 +692,11 @@ class TransitServerState(object):
         enter=done,
         outputs=[_mood_happy_if_first, _disconnect_partner, _unregister, _record_usage],
     )
-    relaying.upon(
-        partner_connection_lost,
-        enter=done,
-        outputs=[_mood_happy_if_second, _disconnect, _unregister, _record_usage],
-    )
+#    relaying.upon(
+#        partner_connection_lost,
+#        enter=done,
+#        outputs=[_mood_happy_if_second, _disconnect, _unregister],  # no _record_usage; other side will
+#    )
 
     done.upon(
         connection_lost,
