@@ -572,17 +572,6 @@ class TransitServerState(object):
         else:
             self._mood = "jilted"
 
-    @_machine.output()
-    def _mood_happy_if_second(self):
-        """
-        We disconnected second so we're only happy if we also connected
-        second.
-        """
-        if self._first:
-            self._mood = "jilted"
-        else:
-            self._mood = "happy"
-
     def _real_register_token_for_side(self, token, side):
         """
         A client has connected and sent a valid version 1 or version 2
@@ -692,11 +681,6 @@ class TransitServerState(object):
         enter=done,
         outputs=[_mood_happy_if_first, _disconnect_partner, _unregister, _record_usage],
     )
-#    relaying.upon(
-#        partner_connection_lost,
-#        enter=done,
-#        outputs=[_mood_happy_if_second, _disconnect, _unregister],  # no _record_usage; other side will
-#    )
 
     done.upon(
         connection_lost,
