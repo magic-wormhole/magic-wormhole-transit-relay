@@ -8,6 +8,7 @@ from twisted.internet import endpoints
 from . import transit_server
 from .server_state import create_usage_tracker
 from .increase_rlimits import increase_rlimits
+from .database import get_db
 
 LONGDESC = """\
 This plugin sets up a 'Transit Relay' server for magic-wormhole. This service

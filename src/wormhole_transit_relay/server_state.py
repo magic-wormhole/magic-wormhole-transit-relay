@@ -9,7 +9,6 @@ from zope.interface import (
     implementer,
 )
 from twisted.python import log
-from .database import get_db
 
 
 class ITransitClient(Interface):
