@@ -74,25 +74,32 @@ class TransitConnection(LineReceiver):
             pass
 
     def lineReceived(self, line):
+        """
+        LineReceiver API
+        """
         # old: "please relay {64}\n"
+        token = None
         old = re.search(br"^please relay (\w{64})$", line)
         if old:
             token = old.group(1)
-            return self._got_handshake(token, None)
+            self._state.please_relay(token)
 
         # new: "please relay {64} for side {16}\n"
         new = re.search(br"^please relay (\w{64}) for side (\w{16})$", line)
         if new:
             token = new.group(1)
             side = new.group(2)
-            return self._got_handshake(token, side)
+            self._state.please_relay_for_side(token, side)
 
-        # we should have been switched to "raw data" mode on the first
-        # line received (after which rawDataReceived() is called for
-        # all bytes) so getting here means a bad handshake.
-        return self._state.bad_token()
+        if token is None:
+            self._state.bad_token()
+        else:
+            self.setRawMode()
 
     def rawDataReceived(self, data):
+        """
+        LineReceiver API
+        """
         # We are an IPushProducer to our buddy's IConsumer, so they'll
         # throttle us (by calling pauseProducing()) when their outbound
         # buffer is full (e.g. when their downstream pipe is full). In
@@ -100,13 +107,6 @@ class TransitConnection(LineReceiver):
         # point the sender will only transmit data as fast as the
         # receiver can handle it.
         self._state.got_bytes(data)
-
-    def _got_handshake(self, token, side):
-        if side is not None:
-            self._state.please_relay_for_side(token, side)
-        else:
-            self._state.please_relay(token)
-        self.setRawMode()
 
     def disconnect_error(self):
         # we haven't finished the handshake, so there are no tokens tracking
