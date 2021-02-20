@@ -57,16 +57,6 @@ class TransitConnection(LineReceiver):
             self._buddy._client.transport.loseConnection()
             self._buddy = None
 
-    def describeToken(self):
-        d = "-"
-        if self._got_token:
-            d = self._got_token[:16].decode("ascii")
-        if self._got_side:
-            d += "-" + self._got_side.decode("ascii")
-        else:
-            d += "-<unsided>"
-        return d
-
     def connectionMade(self):
         # ideally more like self._reactor.seconds() ... but Twisted
         # doesn't have a good way to get the reactor for a protocol
@@ -136,6 +126,7 @@ class TransitConnection(LineReceiver):
 # XXX this probably resulted in a log message we've not refactored yet
 #        self.factory.transitFinished(self, self._got_token, self._got_side,
 #                                     self.describeToken())
+# XXX describeToken -> self._state.get_token()
 
 
 
