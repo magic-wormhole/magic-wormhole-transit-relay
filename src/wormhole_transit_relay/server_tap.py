@@ -45,7 +45,8 @@ def makeService(config, reactor=reactor):
         log_file=log_file,
         usage_db=db,
     )
-    factory = transit_server.Transit(usage, reactor.seconds)
+    ##factory = transit_server.Transit(usage, reactor.seconds)
+    factory = transit_server.WebSocketTransit(usage, reactor.seconds)
     parent = MultiService()
     StreamServerEndpointService(ep, factory).setServiceParent(parent)
     TimerService(5*60.0, factory.update_stats).setServiceParent(parent)

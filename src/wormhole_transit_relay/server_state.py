@@ -612,10 +612,18 @@ class TransitServerState(object):
         Terminal state
         """
 
+    # need a listening.upon(connection_lost) for special websocket
+    # case where handshake fails?
+
     listening.upon(
         connection_made,
         enter=wait_relay,
         outputs=[_remember_client],
+    )
+    listening.upon(
+        connection_lost,
+        enter=done,
+        outputs=[_mood_errory],
     )
 
     wait_relay.upon(
