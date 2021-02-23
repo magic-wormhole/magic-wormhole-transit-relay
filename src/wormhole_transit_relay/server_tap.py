@@ -39,7 +39,7 @@ def makeService(config, reactor=reactor):
     increase_rlimits()
     tcp_ep = endpoints.serverFromString(reactor, config["port"]) # to listen
     # XXX FIXME proper websocket option
-    ws_ep = endpoints.serverFromString(reactor, "tcp:4002:interface=localhost") # to listen
+    ws_ep = endpoints.serverFromString(reactor, "tcp:4002") # to listen
     log_file = (
         os.fdopen(int(config["log-fd"]), "w")
         if config["log-fd"] is not None
