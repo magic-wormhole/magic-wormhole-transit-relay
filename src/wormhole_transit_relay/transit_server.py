@@ -4,10 +4,8 @@ import time
 from twisted.python import log
 from twisted.internet import protocol
 from twisted.protocols.basic import LineReceiver
-from autobahn.twisted.websocket import (
-    WebSocketServerProtocol,
-    WebSocketServerFactory,
-)
+from autobahn.twisted.websocket import WebSocketServerProtocol
+
 
 
 
@@ -69,8 +67,8 @@ class TransitConnection(LineReceiver):
         # (besides "use the global one")
         self.started_time = time.time()
         self._state = TransitServerState(
-            self.factory.pending_requests,
-            self.factory.usage,
+            self.factory.transit.pending_requests,
+            self.factory.transit.usage,
         )
         self._state.connection_made(self)
 ##        self._log_requests = self.factory._log_requests
@@ -119,7 +117,7 @@ class TransitConnection(LineReceiver):
         # us
         self.transport.loseConnection()
         # XXX probably should be logged by state?
-        if self.factory._debug_log:
+        if self.factory.transit._debug_log:
             log.msg("transitFailed %r" % self)
 
     def disconnect_redundant(self):
@@ -140,7 +138,9 @@ class TransitConnection(LineReceiver):
 # different for websocket versus "normal" socket .. so maybe we need
 # to make Transit *not* the factory directly?)
 
-class Transit(WebSocketServerFactory):#protocol.ServerFactory):
+##WebSocketServerFactory):#protocol.ServerFactory):
+
+class Transit(object):
     """
     I manage pairs of simultaneous connections to a secondary TCP port,
     both forwarded to the other. Clients must begin each connection with
@@ -176,10 +176,9 @@ class Transit(WebSocketServerFactory):#protocol.ServerFactory):
     MAXLENGTH = 10*MB
     # TODO: unused
     MAXTIME = 60*SECONDS
-    protocol = TransitConnection
+##    protocol = TransitConnection
 
     def __init__(self, usage, get_timestamp):
-        super(Transit, self).__init__()
         self.active_connections = ActiveConnections()
         self.pending_requests = PendingRequests(self.active_connections)
         self.usage = usage
@@ -253,13 +252,13 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         IProtocol API
         """
         print("connectionMade")
+        super(WebSocketTransitConnection, self).connectionMade()
         self.started_time = time.time()
         self._first_message = True
         self._state = TransitServerState(
-            self.factory.pending_requests,
-            self.factory.usage,
+            self.factory.transit.pending_requests,
+            self.factory.transit.usage,
         )
-        return super(WebSocketTransitConnection, self).connectionMade()
 
     def onOpen(self):
         print("onOpen")
@@ -296,8 +295,3 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         """
         self._state.connection_lost()
         # XXX "transit finished", etc
-
-
-class WebSocketTransit(Transit, WebSocketServerFactory):
-    protocol = WebSocketTransitConnection
-    websocket_protocols = ["transit_relay"]

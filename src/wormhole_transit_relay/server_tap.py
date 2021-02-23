@@ -5,6 +5,10 @@ from twisted.application.service import MultiService
 from twisted.application.internet import (TimerService,
                                           StreamServerEndpointService)
 from twisted.internet import endpoints
+from twisted.internet import protocol
+
+from autobahn.twisted.websocket import WebSocketServerFactory
+
 from . import transit_server
 from .server_state import create_usage_tracker
 from .increase_rlimits import increase_rlimits
@@ -33,7 +37,9 @@ class Options(usage.Options):
 
 def makeService(config, reactor=reactor):
     increase_rlimits()
-    ep = endpoints.serverFromString(reactor, config["port"]) # to listen
+    tcp_ep = endpoints.serverFromString(reactor, config["port"]) # to listen
+    # XXX FIXME proper websocket option
+    ws_ep = endpoints.serverFromString(reactor, "tcp:4002:interface=localhost") # to listen
     log_file = (
         os.fdopen(int(config["log-fd"]), "w")
         if config["log-fd"] is not None
@@ -45,9 +51,18 @@ def makeService(config, reactor=reactor):
         log_file=log_file,
         usage_db=db,
     )
-    ##factory = transit_server.Transit(usage, reactor.seconds)
-    factory = transit_server.WebSocketTransit(usage, reactor.seconds)
+    transit = transit_server.Transit(usage, reactor.seconds)
+    tcp_factory = protocol.ServerFactory()
+    tcp_factory.protocol = transit_server.TransitConnection
+
+    ws_factory = WebSocketServerFactory("ws://localhost:4002")  # FIXME: url
+    ws_factory.protocol = transit_server.WebSocketTransitConnection
+    ws_factory.websocket_protocols = ["transit_relay"]
+
+    tcp_factory.transit = transit
+    ws_factory.transit = transit
     parent = MultiService()
-    StreamServerEndpointService(ep, factory).setServiceParent(parent)
-    TimerService(5*60.0, factory.update_stats).setServiceParent(parent)
+    StreamServerEndpointService(tcp_ep, tcp_factory).setServiceParent(parent)
+    StreamServerEndpointService(ws_ep, ws_factory).setServiceParent(parent)
+    TimerService(5*60.0, transit.update_stats).setServiceParent(parent)
     return parent

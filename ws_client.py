@@ -51,10 +51,8 @@ class RelayEchoClient(WebSocketClientProtocol):
 @react
 @inlineCallbacks
 def main(reactor):
-    #ep = endpoints.clientFromString(reactor, "ws://localhost:4001/")
-    from twisted.plugins.autobahn_endpoints import AutobahnClientEndpoint
-    ep = endpoints.clientFromString(reactor, "tcp:localhost:4001")
-    f = WebSocketClientFactory("ws://127.0.0.1:4001/")
+    ep = endpoints.clientFromString(reactor, "tcp:localhost:4002")
+    f = WebSocketClientFactory("ws://127.0.0.1:4002/")
     f.protocol = RelayEchoClient
     # NB: write our own factory, probably..
     f.token = "a" * 64
@@ -72,3 +70,5 @@ def main(reactor):
         proto.sendMessage(b"it's a message", True)
         yield proto.sendClose()
     yield f.done
+    print("relayed {} bytes:".format(len(proto.data)))
+    print(proto.data.decode("utf8"))
