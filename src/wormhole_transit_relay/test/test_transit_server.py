@@ -19,7 +19,7 @@ class _Transit:
         return sum([
             len(potentials)
             for potentials
-            in self._transit_server.pending_requests._requests.values()
+            in self._transit.pending_requests._requests.values()
         ])
 
     def test_blur_size(self):
@@ -54,7 +54,7 @@ class _Transit:
         self.assertEqual(self.count(), 0)
 
         # the token should be removed too
-        self.assertEqual(len(self._transit_server.pending_requests._requests), 0)
+        self.assertEqual(len(self._transit.pending_requests._requests), 0)
 
     def test_both_unsided(self):
         p1 = self.new_protocol()
@@ -190,8 +190,8 @@ class _Transit:
         p3.send(handshake(token1, side=side2))
         self.flush()
         self.assertEqual(self.count(), 0)
-        self.assertEqual(len(self._transit_server.pending_requests._requests), 0)
-        self.assertEqual(len(self._transit_server.active_connections._connections), 2)
+        self.assertEqual(len(self._transit.pending_requests._requests), 0)
+        self.assertEqual(len(self._transit.active_connections._connections), 2)
         # That will trigger a disconnect on exactly one of (p1 or p2).
         # The other connection should still be connected
         self.assertEqual(sum([int(t.connected) for t in [p1, p2]]), 1)
@@ -347,7 +347,7 @@ class Usage(ServerBase, unittest.TestCase):
     def setUp(self):
         super(Usage, self).setUp()
         self._usage = MemoryUsageRecorder()
-        self._transit_server.usage.add_backend(self._usage)
+        self._transit.usage.add_backend(self._usage)
 
     def test_empty(self):
         p1 = self.new_protocol()

@@ -10,8 +10,9 @@ from zope.interface import (
 )
 from ..transit_server import (
     Transit,
+    TransitConnection,
 )
-from ..transit_server import Transit
+from twisted.internet.protocol import ServerFactory
 from ..server_state import create_usage_tracker
 
 
