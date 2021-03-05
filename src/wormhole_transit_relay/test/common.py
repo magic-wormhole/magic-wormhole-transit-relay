@@ -72,7 +72,6 @@ class ServerBase:
             usage_db=usage_db,
         )
         self._transit_server = Transit(usage, lambda: 123456789.0)
-        self._transit_server._debug_log = self.log_requests
 
     def new_protocol(self):
         """

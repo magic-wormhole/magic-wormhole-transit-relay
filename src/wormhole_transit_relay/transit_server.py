@@ -289,6 +289,11 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         else:
             self._state.got_bytes(payload)
 
+    def disconnect_redundant(self):
+        # this is called if a buddy connected and we were found unnecessary.
+        # Any token-tracking cleanup will have been done before we're called.
+        self.transport.loseConnection()
+
     def onClose(self, wasClean, code, reason):
         """
         IWebSocketChannel API
