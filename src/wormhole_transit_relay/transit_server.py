@@ -240,18 +240,18 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         """
         IWebSocketChannel API
         """
-        print("onConnect: {}".format(request))
+        # print("onConnect: {}".format(request))
         # ideally more like self._reactor.seconds() ... but Twisted
         # doesn't have a good way to get the reactor for a protocol
         # (besides "use the global one")
-        print("protocols: {}".format(request.protocols))
-        return None#"transit_relay"
+        # print("protocols: {}".format(request.protocols))
+        return None #"transit_relay"
 
     def connectionMade(self):
         """
         IProtocol API
         """
-        print("connectionMade")
+        # print("connectionMade")
         super(WebSocketTransitConnection, self).connectionMade()
         self.started_time = time.time()
         self._first_message = True
@@ -261,14 +261,14 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         )
 
     def onOpen(self):
-        print("onOpen")
+        # print("onOpen")
         self._state.connection_made(self)
 
     def onMessage(self, payload, isBinary):
         """
         We may have a 'handshake' on our hands or we may just have some bytes to relay
         """
-        print("onMessage isBinary={}: {}".format(isBinary, payload))
+        # print("onMessage isBinary={}: {}".format(isBinary, payload))
         if self._first_message:
             self._first_message = False
             token = None
@@ -298,6 +298,6 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         """
         IWebSocketChannel API
         """
-        print("onClose", wasClean, code, reason)
+        # print("onClose", wasClean, code, reason)
         self._state.connection_lost()
         # XXX "transit finished", etc
