@@ -298,5 +298,6 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         """
         IWebSocketChannel API
         """
+        print("onClose", wasClean, code, reason)
         self._state.connection_lost()
         # XXX "transit finished", etc
