@@ -277,6 +277,10 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         """
         We may have a 'handshake' on our hands or we may just have some bytes to relay
         """
+        if not isBinary:
+            raise ValueError(
+                "All messages must be binary"
+            )
         # print("onMessage isBinary={}: {}".format(isBinary, payload))
         if self._first_message:
             self._first_message = False

@@ -594,7 +594,7 @@ class New(unittest.TestCase):
         server_protocol = server_factory.buildProtocol(('127.0.0.1', 0))
 
         class ClientProtocol(protocol.Protocol):
-            def sendMessage(self, data):
+            def send(self, data):
                 self.transport.write(data)
 
             def disconnect(self):
@@ -623,8 +623,13 @@ class New(unittest.TestCase):
         ws_protocol = ws_factory.buildProtocol(('127.0.0.1', 0))
 
         from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol
+
+        class TransitWebSocketClientProtocol(WebSocketClientProtocol):
+            def send(self, data):
+                self.sendMessage(data, True)
+
         client_factory = WebSocketClientFactory()
-        client_factory.protocol = WebSocketClientProtocol
+        client_factory.protocol = TransitWebSocketClientProtocol
         client_factory.protocols = ["binary"]
         client_protocol = client_factory.buildProtocol(('127.0.0.1', 31337))
         client_protocol.disconnect = client_protocol.dropConnection
@@ -639,9 +644,10 @@ class New(unittest.TestCase):
         return client_protocol
 
     def test_short(self):
+        # XXX this test only makes sense for TCP
         p1 = self.new_protocol()
         # hang up before sending a complete handshake
-#        p1.sendMessage(b"short")  # <-- only makes sense for TCP
+        p1.send(b"short")
         p1.disconnect()
         self.flush()
 
@@ -659,21 +665,19 @@ class New(unittest.TestCase):
         from twisted.internet import reactor
 
         print("p1 data")
-        p1.sendMessage(handshake(token1, side=side1), True)
+        p1.send(handshake(token1, side=side1))
         print("p2 data")
-        p2.sendMessage(handshake(token1, side=side2), True)
+        p2.send(handshake(token1, side=side2))
         self.flush()
 
         print("shouldn't be events yet")
         self.assertEqual(self._usage.events, []) # no events yet
 
         print("p1 moar")
-        for x in range(13):
-            p1.sendMessage(b"\x00", True)
-        ##p1.sendMessage(b"\x00" * 13)
+        p1.send(b"\x00" * 13)
         self.flush()
         print("p2 moar")
-        p2.sendMessage(b"\xff" * 7, True)
+        p2.send(b"\xff" * 7)
         self.flush()
 
         print("p1 lose")
