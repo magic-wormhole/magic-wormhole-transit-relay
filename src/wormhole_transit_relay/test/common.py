@@ -43,11 +43,24 @@ class ServerBase:
             """
             Speak the transit client protocol used by the tests over TCP
             """
+            received = b""
+            connected = False
+
+            def connectionMade(self):
+                self.connected = True
+
+            def connectionLost(self, reason):
+                self.connected = False
+
             def send(self, data):
                 self.transport.write(data)
 
             def disconnect(self):
                 self.transport.loseConnection()
+
+            def dataReceived(self, data):
+                self.received = self.received + data
+
 
         client_factory = ClientFactory()
         client_factory.protocol = TransitClientProtocolTcp
