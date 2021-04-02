@@ -41,10 +41,12 @@ class _Transit:
         token1 = b"\x00"*32
         side1 = b"\x01"*8
 
-        p1.dataReceived(handshake(token1, side1))
+        p1.send(handshake(token1, side1))
+        self.flush()
         self.assertEqual(self.count(), 1)
 
-        p1.transport.loseConnection()
+        p1.disconnect()
+        self.flush()
         self.assertEqual(self.count(), 0)
 
         # the token should be removed too
