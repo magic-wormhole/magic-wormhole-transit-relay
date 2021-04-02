@@ -77,6 +77,10 @@ class TransitConnection(LineReceiver):
         except AttributeError:
             pass
 
+        def tracer(oldstate, theinput, newstate):
+            print("TRACE: {}: {} --{}--> {}".format(id(self), oldstate, theinput, newstate))
+        self._state.set_trace_function(tracer)
+
     def lineReceived(self, line):
         """
         LineReceiver API
@@ -213,6 +217,7 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         """
         ITransitClient API
         """
+        print("send: {}".format(repr(data)))
         self.sendMessage(data, isBinary=True)
 
     def disconnect(self):
@@ -244,14 +249,14 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         # ideally more like self._reactor.seconds() ... but Twisted
         # doesn't have a good way to get the reactor for a protocol
         # (besides "use the global one")
-        # print("protocols: {}".format(request.protocols))
-        return None #"transit_relay"
+        print("protocols: {}".format(request.protocols))
+        return 'binary'
 
     def connectionMade(self):
         """
         IProtocol API
         """
-        # print("connectionMade")
+        print("connectionMade")
         super(WebSocketTransitConnection, self).connectionMade()
         self.started_time = time.time()
         self._first_message = True
@@ -259,6 +264,10 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
             self.factory.transit.pending_requests,
             self.factory.transit.usage,
         )
+
+        def tracer(oldstate, theinput, newstate):
+            print("WSTRACE: {}: {} --{}--> {}".format(id(self), oldstate, theinput, newstate))
+        self._state.set_trace_function(tracer)
 
     def onOpen(self):
         # print("onOpen")
@@ -298,6 +307,6 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         """
         IWebSocketChannel API
         """
-        # print("onClose", wasClean, code, reason)
+        print("{} onClose: {} {} {}".format(id(self), wasClean, code, reason))
         self._state.connection_lost()
         # XXX "transit finished", etc

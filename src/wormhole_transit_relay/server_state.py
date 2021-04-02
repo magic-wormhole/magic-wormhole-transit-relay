@@ -497,6 +497,7 @@ class TransitServerState(object):
     @_machine.output()
     def _count_bytes(self, data):
         self._total_sent += len(data)
+        print("COUNT BYTES +{} now {}".format(len(data), self._total_sent))
 
     @_machine.output()
     def _send(self, data):
@@ -522,6 +523,7 @@ class TransitServerState(object):
     # some outputs to record "usage" information ..
     @_machine.output()
     def _record_usage(self):
+        print("RECORD", self, self._mood, self._total_sent)
         if self._mood == "jilted":
             if self._buddy:
                 if self._buddy._mood == "happy":
@@ -694,3 +696,7 @@ class TransitServerState(object):
         enter=done,
         outputs=[],
     )
+
+
+    ## XXX tracing
+    set_trace_function = _machine._setTrace
