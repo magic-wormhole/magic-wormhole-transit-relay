@@ -1,13 +1,10 @@
-from twisted.test import proto_helpers
 from twisted.internet.protocol import (
-    ServerFactory,
     ClientFactory,
     Protocol,
 )
 from twisted.test import iosim
 from ..transit_server import (
     Transit,
-    TransitConnection,
 )
 
 
