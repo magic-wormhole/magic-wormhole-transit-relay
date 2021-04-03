@@ -1,6 +1,9 @@
 from __future__ import unicode_literals, print_function
 from twisted.trial import unittest
-from unittest import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 from twisted.application.service import MultiService
 from .. import server_tap
 
