@@ -78,7 +78,10 @@ class ServerBase:
         Create a new client protocol connected to the server.
         :returns: a IRelayTestClient implementation
         """
-        server_protocol = self._transit_server.buildProtocol(('127.0.0.1', 0))
+        server_factory = ServerFactory()
+        server_factory.protocol = TransitConnection
+        server_factory.transit = self._transit_server
+        server_protocol = server_factory.buildProtocol(('127.0.0.1', 0))
 
         @implementer(IRelayTestClient)
         class TransitClientProtocolTcp(Protocol):
