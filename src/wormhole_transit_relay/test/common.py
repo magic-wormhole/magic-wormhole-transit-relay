@@ -3,10 +3,44 @@ from twisted.internet.protocol import (
     Protocol,
 )
 from twisted.test import iosim
+from zope.interface import (
+    Interface,
+    Attribute,
+    implementer,
+)
 from ..transit_server import (
     Transit,
 )
 
+
+class ITransitClient(Interface):
+    """
+    The client interface used by tests.
+    """
+
+    connected = Attribute("True if we are currently connected else False")
+
+    def send(data):
+        """
+        Send some bytes.
+        :param bytes data: the data to send
+        """
+
+    def disconnect():
+        """
+        Terminate the connection.
+        """
+
+    def get_received_data():
+        """
+        :returns: all the bytes received from the server on this
+        connection.
+        """
+
+    def reset_data():
+        """
+        Erase any received data to this point.
+        """
 
 class ServerBase:
     log_requests = False
@@ -33,14 +67,18 @@ class ServerBase:
         self._transit_server._debug_log = self.log_requests
 
     def new_protocol(self):
+        """
+        Create a new client protocol connected to the server.
+        :returns: a ITransitClient implementation
+        """
         server_protocol = self._transit_server.buildProtocol(('127.0.0.1', 0))
 
-        # XXX interface?
+        @implementer(ITransitClient)
         class TransitClientProtocolTcp(Protocol):
             """
             Speak the transit client protocol used by the tests over TCP
             """
-            received = b""
+            _received = b""
             connected = False
 
             def connectionMade(self):
@@ -56,8 +94,13 @@ class ServerBase:
                 self.transport.loseConnection()
 
             def dataReceived(self, data):
-                self.received = self.received + data
+                self._received = self._received + data
 
+            def reset_received_data(self):
+                self._received = b""
+
+            def get_received_data(self):
+                return self._received
 
         client_factory = ClientFactory()
         client_factory.protocol = TransitClientProtocolTcp

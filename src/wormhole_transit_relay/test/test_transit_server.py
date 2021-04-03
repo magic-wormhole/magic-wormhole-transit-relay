@@ -65,16 +65,16 @@ class _Transit:
 
         # a correct handshake yields an ack, after which we can send
         exp = b"ok\n"
-        self.assertEqual(p1.received, exp)
-        self.assertEqual(p2.received, exp)
+        self.assertEqual(p1.get_received_data(), exp)
+        self.assertEqual(p2.get_received_data(), exp)
 
-        p1.received = b""
-        p2.received = b""
+        p1.reset_received_data()
+        p2.reset_received_data()
 
         s1 = b"data1"
         p1.send(s1)
         self.flush()
-        self.assertEqual(p2.received, s1)
+        self.assertEqual(p2.get_received_data(), s1)
 
         p1.disconnect()
         p2.disconnect()
@@ -93,17 +93,17 @@ class _Transit:
 
         # a correct handshake yields an ack, after which we can send
         exp = b"ok\n"
-        self.assertEqual(p1.received, exp)
-        self.assertEqual(p2.received, exp)
+        self.assertEqual(p1.get_received_data(), exp)
+        self.assertEqual(p2.get_received_data(), exp)
 
-        p1.received = b""
-        p2.received = b""
+        p1.reset_received_data()
+        p2.reset_received_data()
 
         # all data they sent after the handshake should be given to us
         s1 = b"data1"
         p1.send(s1)
         self.flush()
-        self.assertEqual(p2.received, s1)
+        self.assertEqual(p2.get_received_data(), s1)
 
         p1.disconnect()
         p2.disconnect()
@@ -121,17 +121,17 @@ class _Transit:
 
         # a correct handshake yields an ack, after which we can send
         exp = b"ok\n"
-        self.assertEqual(p1.received, exp)
-        self.assertEqual(p2.received, exp)
+        self.assertEqual(p1.get_received_data(), exp)
+        self.assertEqual(p2.get_received_data(), exp)
 
-        p1.received = b""
-        p2.received = b""
+        p1.reset_received_data()
+        p2.reset_received_data()
 
         # all data they sent after the handshake should be given to us
         s1 = b"data1"
         p1.send(s1)
         self.flush()
-        self.assertEqual(p2.received, s1)
+        self.assertEqual(p2.get_received_data(), s1)
 
         p1.disconnect()
         p2.disconnect()
@@ -151,17 +151,17 @@ class _Transit:
 
         # a correct handshake yields an ack, after which we can send
         exp = b"ok\n"
-        self.assertEqual(p1.received, exp)
-        self.assertEqual(p2.received, exp)
+        self.assertEqual(p1.get_received_data(), exp)
+        self.assertEqual(p2.get_received_data(), exp)
 
-        p1.received = b""
-        p2.received = b""
+        p1.reset_received_data()
+        p2.reset_received_data()
 
         # all data they sent after the handshake should be given to us
         s1 = b"data1"
         p1.send(s1)
         self.flush()
-        self.assertEqual(p2.received, s1)
+        self.assertEqual(p2.get_received_data(), s1)
 
         p1.disconnect()
         p2.disconnect()
@@ -207,7 +207,7 @@ class _Transit:
         self.flush()
 
         exp = b"bad handshake\n"
-        self.assertEqual(p1.received, exp)
+        self.assertEqual(p1.get_received_data(), exp)
         p1.disconnect()
 
     def test_bad_handshake_old_slow(self):
@@ -227,7 +227,7 @@ class _Transit:
         self.flush()
 
         exp = b"bad handshake\n"
-        self.assertEqual(p1.received, exp)
+        self.assertEqual(p1.get_received_data(), exp)
 
         p1.disconnect()
 
@@ -243,7 +243,7 @@ class _Transit:
         self.flush()
 
         exp = b"bad handshake\n"
-        self.assertEqual(p1.received, exp)
+        self.assertEqual(p1.get_received_data(), exp)
 
         p1.disconnect()
 
@@ -261,7 +261,7 @@ class _Transit:
         self.flush()
 
         exp = b"bad handshake\n"
-        self.assertEqual(p1.received, exp)
+        self.assertEqual(p1.get_received_data(), exp)
 
         p1.disconnect()
 
@@ -274,7 +274,7 @@ class _Transit:
         self.flush()
 
         exp = b"impatient\n"
-        self.assertEqual(p1.received, exp)
+        self.assertEqual(p1.get_received_data(), exp)
 
         p1.disconnect()
 
@@ -289,7 +289,7 @@ class _Transit:
         self.flush()
 
         exp = b"impatient\n"
-        self.assertEqual(p1.received, exp)
+        self.assertEqual(p1.get_received_data(), exp)
 
         p1.disconnect()
 
@@ -315,7 +315,7 @@ class _Transit:
         self.flush()
 
         exp = b"impatient\n"
-        self.assertEqual(p1.received, exp)
+        self.assertEqual(p1.get_received_data(), exp)
 
         p1.disconnect()
 
