@@ -83,9 +83,11 @@ class ServerBase:
 
             def connectionMade(self):
                 self.connected = True
+                return Protocol.connectionMade(self)
 
             def connectionLost(self, reason):
                 self.connected = False
+                return Protocol.connectionLost(self, reason)
 
             def send(self, data):
                 self.transport.write(data)
