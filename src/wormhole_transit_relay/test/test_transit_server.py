@@ -338,6 +338,8 @@ class TransitWithoutLogs(_Transit, ServerBase, unittest.TestCase):
     log_requests = False
 
 class Usage(ServerBase, unittest.TestCase):
+    log_requests = True
+
     def setUp(self):
         super(Usage, self).setUp()
         self._usage = []
