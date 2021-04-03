@@ -81,6 +81,8 @@ class ServerBase:
             _received = b""
             connected = False
 
+            # override Protocol callbacks
+
             def connectionMade(self):
                 self.connected = True
                 return Protocol.connectionMade(self)
@@ -89,14 +91,16 @@ class ServerBase:
                 self.connected = False
                 return Protocol.connectionLost(self, reason)
 
+            def dataReceived(self, data):
+                self._received = self._received + data
+
+            # ITransitClient API
+
             def send(self, data):
                 self.transport.write(data)
 
             def disconnect(self):
                 self.transport.loseConnection()
-
-            def dataReceived(self, data):
-                self._received = self._received + data
 
             def reset_received_data(self):
                 self._received = b""
