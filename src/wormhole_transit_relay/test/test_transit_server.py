@@ -377,6 +377,7 @@ class Usage(ServerBase, unittest.TestCase):
         self.assertEqual(self._usage.events[0]["mood"], "empty", self._usage)
 
     def test_short(self):
+        # XXX this test only makes sense for TCP
         p1 = self.new_protocol()
         # hang up before sending a complete handshake
         p1.send(b"short")
@@ -512,72 +513,15 @@ class UsageWebSockets(Usage):
     def tearDown(self):
         return self._pump.stop()
 
-
-
-class New(unittest.TestCase):
-    """
-    A completely fresh approach using:
-
-      - no base classes (besides TestCase to match rest)
-      - twisted.test.iosim.* (IOPump etc)
-      - no "faking" any interfaces
-    """
-    log_requests = False
-
-    def setUp(self):
-        self._pumps = []
-        self._usage = MemoryUsageRecorder()
-        self._setup_relay(blur_usage=60.0 if self.log_requests else None)
-
-    def flush(self):
-        for pump in self._pumps:
-            pump.flush()
-
-    def _setup_relay(self, blur_usage=None, log_file=None, usage_db=None):
-        usage = create_usage_tracker(
-            blur_usage=blur_usage,
-            log_file=log_file,
-            usage_db=usage_db,
-        )
-        self._transit_server = Transit(usage, lambda: 123456789.0)
-        self._transit_server._debug_log = self.log_requests
-        self._transit_server.usage.add_backend(self._usage)
+    def test_short(self):
+        """
+        This test essentially just tests the framing of the line-oriented
+        TCP protocol; it doesnt' make sense for the WebSockets case
+        because WS handles frameing: you either sent a 'bad handshake'
+        because it is semantically invalid or no handshake (yet).
+        """
 
     def new_protocol(self):
-        if False:
-            return self._new_protocol_tcp()
-        else:
-            return self._new_protocol_ws()
-
-    def _new_protocol_tcp(self):
-        server_factory = ServerFactory()
-        server_factory.protocol = TransitConnection
-        server_factory.transit = self._transit_server
-        server_protocol = server_factory.buildProtocol(('127.0.0.1', 0))
-
-        class ClientProtocol(protocol.Protocol):
-            def send(self, data):
-                self.transport.write(data)
-
-            def disconnect(self):
-                self.transport.loseConnection()
-
-        client_factory = ClientFactory()
-        client_factory.protocol = ClientProtocol
-        client_protocol = client_factory.buildProtocol(('128.0.0.1', 31337))
-
-        pump = iosim.connect(
-            server_protocol,
-            iosim.makeFakeServer(server_protocol),
-            client_protocol,
-            iosim.makeFakeClient(client_protocol),
-        )
-        print("did connectionmade get called yet?")
-        pump.flush()
-        self._pumps.append(pump)
-        return client_protocol
-
-    def _new_protocol_ws(self):
         ws_factory = WebSocketServerFactory("ws://localhost:4002")  # FIXME: url
         ws_factory.protocol = WebSocketTransitConnection
         ws_factory.transit = self._transit_server
@@ -604,49 +548,3 @@ class New(unittest.TestCase):
         )
         self._pumps.append(pump)
         return client_protocol
-
-    def test_short(self):
-        # XXX this test only makes sense for TCP
-        p1 = self.new_protocol()
-        # hang up before sending a complete handshake
-        p1.send(b"short")
-        p1.disconnect()
-        self.flush()
-
-        # that will log the "empty" usage event
-        self.assertEqual(len(self._usage.events), 1, self._usage)
-        self.assertEqual("empty", self._usage.events[0]["mood"])
-
-    def test_one_happy_one_jilted(self):
-        p1 = self.new_protocol()
-        p2 = self.new_protocol()
-
-        token1 = b"\x00"*32
-        side1 = b"\x01"*8
-        side2 = b"\x02"*8
-        from twisted.internet import reactor
-
-        print("p1 data")
-        p1.send(handshake(token1, side=side1))
-        print("p2 data")
-        p2.send(handshake(token1, side=side2))
-        self.flush()
-
-        print("shouldn't be events yet")
-        self.assertEqual(self._usage.events, []) # no events yet
-
-        print("p1 moar")
-        p1.send(b"\x00" * 13)
-        self.flush()
-        print("p2 moar")
-        p2.send(b"\xff" * 7)
-        self.flush()
-
-        print("p1 lose")
-        p1.disconnect()
-        self.flush()
-
-        self.assertEqual(len(self._usage.events), 1, self._usage)
-        self.assertEqual(self._usage.events[0]["mood"], "happy", self._usage)
-        self.assertEqual(self._usage.events[0]["total_bytes"], 20)
-        self.assertNotIdentical(self._usage.events[0]["waiting_time"], None)
