@@ -1,11 +1,12 @@
 from __future__ import print_function
+import sys
 
 from twisted.internet import endpoints
 from twisted.internet.defer import (
     Deferred,
     inlineCallbacks,
 )
-from twisted.internet.task import react
+from twisted.internet.task import react, deferLater
 from twisted.internet.error import (
     ConnectionDone,
 )
@@ -26,13 +27,19 @@ from autobahn.websocket import types
 class RelayEchoClient(WebSocketClientProtocol):
 
     def onOpen(self):
-        self.data = b""
-        self.sendMessage(u"please relay {}".format(self.factory.token).encode("ascii"), True)
-
-    def onConnecting(self, details):
-        return types.ConnectingRequest(
-            protocols=["transit_relay"],
+        self._received = b""
+        self.sendMessage(
+            u"please relay {} for side {}".format(
+                self.factory.token,
+                self.factory.side,
+            ).encode("ascii"),
+            True,
         )
+
+    # def onConnecting(self, details):
+    #     return types.ConnectingRequest(
+    #         protocols=["binary"],
+    #     )
 
     def onMessage(self, data, isBinary):
         print(">onMessage: {} bytes".format(len(data)))
@@ -40,35 +47,44 @@ class RelayEchoClient(WebSocketClientProtocol):
         if data == b"ok\n":
             self.factory.ready.callback(None)
         else:
-            self.data += data
-        return True
+            self._received += data
+#        return False
 
     def onClose(self, wasClean, code, reason):
         print(">onClose", wasClean, code, reason)
         self.factory.done.callback(reason)
+        if not self.factory.ready.called:
+            self.factory.ready.errback(RuntimeError(reason))
 
 
 @react
 @inlineCallbacks
 def main(reactor):
+    will_send_message = len(sys.argv) > 1
     ep = endpoints.clientFromString(reactor, "tcp:localhost:4002")
     f = WebSocketClientFactory("ws://127.0.0.1:4002/")
+    f.reactor = reactor
     f.protocol = RelayEchoClient
+##    f.protocols = ["binary"]
     # NB: write our own factory, probably..
     f.token = "a" * 64
+    f.side = "0" * 16 if will_send_message else "1" * 16
     f.done = Deferred()
     f.ready = Deferred()
     proto = yield ep.connect(f)
     # proto_d = ep.connect(f)
     # print("proto_d", proto_d)
     # proto = yield proto_d
-    print("proto", proto, f.done)
+    print("proto", proto)
     yield f.ready
     print("ready")
-    import sys
-    if len(sys.argv) > 2:
-        proto.sendMessage(b"it's a message", True)
+    if will_send_message:
+        for _ in range(5):
+            print("sending message")
+            proto.sendMessage(b"it's a message", True)
+            yield deferLater(reactor, 0.2)
         yield proto.sendClose()
+        print("closing")
     yield f.done
-    print("relayed {} bytes:".format(len(proto.data)))
-    print(proto.data.decode("utf8"))
+    print("relayed {} bytes:".format(len(proto._received)))
+    print(proto._received.decode("utf8"))
