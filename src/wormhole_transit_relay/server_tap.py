@@ -57,7 +57,6 @@ def makeService(config, reactor=reactor):
 
     ws_factory = WebSocketServerFactory("ws://localhost:4002")  # FIXME: url
     ws_factory.protocol = transit_server.WebSocketTransitConnection
-    ws_factory.websocket_protocols = ["binary"]
 
     tcp_factory.transit = transit
     ws_factory.transit = transit

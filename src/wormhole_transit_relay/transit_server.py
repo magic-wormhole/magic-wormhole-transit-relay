@@ -240,17 +240,6 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
             self._buddy._client.transport.loseConnection()
             self._buddy = None
 
-    def onConnect(self, request):
-        """
-        IWebSocketChannel API
-        """
-        # print("onConnect: {}".format(request))
-        # ideally more like self._reactor.seconds() ... but Twisted
-        # doesn't have a good way to get the reactor for a protocol
-        # (besides "use the global one")
-        print("protocols: {}".format(request.protocols))
-        return 'binary'
-
     def connectionMade(self):
         """
         IProtocol API
