@@ -56,8 +56,7 @@ class TransitConnection(LineReceiver):
         """
         if self._buddy is not None:
             log.msg("buddy_disconnected {}".format(self._buddy.get_token()))
-            # XXX if our buddy is a WebSocket, this isn't the right way?
-            self._buddy._client.transport.loseConnection()
+            self._buddy._client.disconnect()
             self._buddy = None
 
     def connectionMade(self):
@@ -76,9 +75,10 @@ class TransitConnection(LineReceiver):
         except AttributeError:
             pass
 
-        def tracer(oldstate, theinput, newstate):
-            print("TRACE: {}: {} --{}--> {}".format(id(self), oldstate, theinput, newstate))
-        self._state.set_trace_function(tracer)
+        if False:
+            def tracer(oldstate, theinput, newstate):
+                print("TRACE: {}: {} --{}--> {}".format(id(self), oldstate, theinput, newstate))
+            self._state.set_trace_function(tracer)
 
     def lineReceived(self, line):
         """
@@ -133,15 +133,7 @@ class TransitConnection(LineReceiver):
 # XXX this probably resulted in a log message we've not refactored yet
 #        self.factory.transitFinished(self, self._got_token, self._got_side,
 #                                     self.describeToken())
-# XXX describeToken -> self._state.get_token()
 
-
-# XXX multiple-inheritance sucks...
-# ("Transit" wants to be "the factory" but the base class is slightly
-# different for websocket versus "normal" socket .. so maybe we need
-# to make Transit *not* the factory directly?)
-
-##WebSocketServerFactory):#protocol.ServerFactory):
 
 class Transit(object):
     """
@@ -179,7 +171,6 @@ class Transit(object):
     MAXLENGTH = 10*MB
     # TODO: unused
     MAXTIME = 60*SECONDS
-##    protocol = TransitConnection
 
     def __init__(self, usage, get_timestamp):
         self.active_connections = ActiveConnections()
@@ -236,7 +227,6 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         """
         if self._buddy is not None:
             log.msg("buddy_disconnected {}".format(self._buddy.get_token()))
-            # XXX if our buddy is tcp this is wrong
             self._buddy._client.disconnect()
             self._buddy = None
 
@@ -252,12 +242,12 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
             self.factory.transit.usage,
         )
 
-        def tracer(oldstate, theinput, newstate):
-            print("WSTRACE: {}: {} --{}--> {}".format(id(self), oldstate, theinput, newstate))
-        self._state.set_trace_function(tracer)
+        if False:
+            def tracer(oldstate, theinput, newstate):
+                print("WSTRACE: {}: {} --{}--> {}".format(id(self), oldstate, theinput, newstate))
+            self._state.set_trace_function(tracer)
 
     def onOpen(self):
-        # print("onOpen")
         self._state.connection_made(self)
 
     def onMessage(self, payload, isBinary):

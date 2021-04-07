@@ -416,8 +416,6 @@ class Usage(ServerBase, unittest.TestCase):
     def test_one_happy_one_jilted(self):
         p1 = self.new_protocol()
         p2 = self.new_protocol()
-        print(dir(p1.factory))
-        return
 
         token1 = b"\x00"*32
         side1 = b"\x01"*8
@@ -427,7 +425,6 @@ class Usage(ServerBase, unittest.TestCase):
         p2.send(handshake(token1, side=side2))
         self.flush()
 
-        print("shouldn't be events yet")
         self.assertEqual(self._usage.events, []) # no events yet
 
         p1.send(b"\x00" * 13)
@@ -464,8 +461,6 @@ class Usage(ServerBase, unittest.TestCase):
         p1c.disconnect()
         self.flush()
 
-        for x in self._usage.events:
-            print(x)
         self.assertEqual(len(self._usage.events), 1, self._usage)
         self.assertEqual(self._usage.events[0]["mood"], "lonely")
 
