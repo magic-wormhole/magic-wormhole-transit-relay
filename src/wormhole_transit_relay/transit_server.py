@@ -7,8 +7,6 @@ from twisted.protocols.basic import LineReceiver
 from autobahn.twisted.websocket import WebSocketServerProtocol
 
 
-
-
 SECONDS = 1.0
 MINUTE = 60*SECONDS
 HOUR = 60*MINUTE
