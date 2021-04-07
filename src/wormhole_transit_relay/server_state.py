@@ -499,10 +499,6 @@ class TransitServerState(object):
         self._total_sent += len(data)
 
     @_machine.output()
-    def _send(self, data):
-        self._client.send(data)
-
-    @_machine.output()
     def _send_to_partner(self, data):
         self._buddy._client.send(data)
 
