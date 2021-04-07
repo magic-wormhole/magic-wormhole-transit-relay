@@ -43,6 +43,9 @@ class RelayEchoClient(WebSocketClientProtocol):
             self.factory.ready.callback(None)
         else:
             self._received += data
+            if False:
+                # test abrupt hangup from receiving side
+                self.transport.loseConnection()
 
     def onClose(self, wasClean, code, reason):
         print(">onClose", wasClean, code, reason)
