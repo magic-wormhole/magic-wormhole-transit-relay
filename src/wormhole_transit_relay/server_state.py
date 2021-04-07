@@ -618,7 +618,7 @@ class TransitServerState(object):
     listening.upon(
         connection_made,
         enter=wait_relay,
-        outputs=[_remember_client],
+        outputs=[_remember_client],  # XXX need _forget_client ?
     )
     listening.upon(
         connection_lost,
