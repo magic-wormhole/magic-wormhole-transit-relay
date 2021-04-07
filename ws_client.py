@@ -36,11 +36,6 @@ class RelayEchoClient(WebSocketClientProtocol):
             True,
         )
 
-    # def onConnecting(self, details):
-    #     return types.ConnectingRequest(
-    #         protocols=["binary"],
-    #     )
-
     def onMessage(self, data, isBinary):
         print(">onMessage: {} bytes".format(len(data)))
         print(data, isBinary)
@@ -48,7 +43,6 @@ class RelayEchoClient(WebSocketClientProtocol):
             self.factory.ready.callback(None)
         else:
             self._received += data
-#        return False
 
     def onClose(self, wasClean, code, reason):
         print(">onClose", wasClean, code, reason)
@@ -65,18 +59,15 @@ def main(reactor):
     f = WebSocketClientFactory("ws://127.0.0.1:4002/")
     f.reactor = reactor
     f.protocol = RelayEchoClient
-##    f.protocols = ["binary"]
-    # NB: write our own factory, probably..
     f.token = "a" * 64
     f.side = "0" * 16 if will_send_message else "1" * 16
     f.done = Deferred()
     f.ready = Deferred()
+
     proto = yield ep.connect(f)
-    # proto_d = ep.connect(f)
-    # print("proto_d", proto_d)
-    # proto = yield proto_d
     print("proto", proto)
     yield f.ready
+
     print("ready")
     if will_send_message:
         for _ in range(5):

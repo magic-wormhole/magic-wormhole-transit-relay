@@ -58,6 +58,7 @@ class TransitConnection(LineReceiver):
         """
         if self._buddy is not None:
             log.msg("buddy_disconnected {}".format(self._buddy.get_token()))
+            # XXX if our buddy is a WebSocket, this isn't the right way?
             self._buddy._client.transport.loseConnection()
             self._buddy = None
 
@@ -237,7 +238,8 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         """
         if self._buddy is not None:
             log.msg("buddy_disconnected {}".format(self._buddy.get_token()))
-            self._buddy._client.transport.loseConnection()
+            # XXX if our buddy is tcp this is wrong
+            self._buddy._client.disconnect()
             self._buddy = None
 
     def connectionMade(self):
