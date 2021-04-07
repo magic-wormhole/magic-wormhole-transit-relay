@@ -2,7 +2,6 @@ from __future__ import print_function, unicode_literals
 import re
 import time
 from twisted.python import log
-from twisted.internet import protocol
 from twisted.protocols.basic import LineReceiver
 from autobahn.twisted.websocket import WebSocketServerProtocol
 

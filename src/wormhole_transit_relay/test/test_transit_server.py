@@ -1,10 +1,16 @@
 from __future__ import print_function, unicode_literals
-import base64
 from binascii import hexlify
 from twisted.trial import unittest
-from twisted.test import proto_helpers
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.task import deferLater
+from twisted.test import iosim
+from autobahn.twisted.websocket import (
+    WebSocketServerFactory,
+    WebSocketClientFactory,
+    WebSocketClientProtocol,
+)
+from autobahn.twisted.testing import (
+    create_pumper,
+    MemoryReactorClockResolver,
+)
 from .common import ServerBase
 from ..server_state import (
     MemoryUsageRecorder,
@@ -13,15 +19,6 @@ from ..server_state import (
 from ..transit_server import (
     WebSocketTransitConnection,
 )
-
-from ..transit_server import Transit, TransitConnection, WebSocketTransitConnection
-from twisted.internet.protocol import (
-    ServerFactory,
-    ClientFactory,
-)
-from twisted.internet import protocol
-from ..server_state import create_usage_tracker
-from autobahn.twisted.websocket import WebSocketServerFactory
 
 
 def handshake(token, side=None):
@@ -476,16 +473,6 @@ class Usage(ServerBase, unittest.TestCase):
         self.flush()
         self.assertEqual(len(self._usage.events), 3, self._usage)
         self.assertEqual(self._usage.events[2]["mood"], "happy")
-
-
-from twisted.test import iosim
-from twisted.internet.testing import MemoryReactorClock
-from twisted.internet.address import IPv4Address
-from autobahn.twisted.testing import (
-    create_pumper,
-    create_memory_agent,
-    MemoryReactorClockResolver,
-)
 
 
 class UsageWebSockets(Usage):
