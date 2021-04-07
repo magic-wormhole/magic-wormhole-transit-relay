@@ -288,7 +288,11 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
             if token is None:
                 self._state.bad_token()
         else:
-            self._state.got_bytes(payload)
+            try:
+                self._state.got_bytes(payload)
+            except Exception as e:
+                log.err("Failed to send to partner: {}".format(e))
+                self.sendClose(3000, "send to partner failed")
 
     def disconnect_redundant(self):
         # this is called if a buddy connected and we were found unnecessary.
