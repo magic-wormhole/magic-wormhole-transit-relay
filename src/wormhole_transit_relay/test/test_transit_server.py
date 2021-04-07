@@ -515,7 +515,6 @@ class UsageWebSockets(Usage):
 
         client_factory = WebSocketClientFactory()
         client_factory.protocol = TransitWebSocketClientProtocol
-        client_factory.protocols = ["binary"]
         client_protocol = client_factory.buildProtocol(('127.0.0.1', 31337))
         client_protocol.disconnect = client_protocol.dropConnection
 
