@@ -504,13 +504,10 @@ class UsageWebSockets(Usage):
         """
 
     def new_protocol(self):
-        ws_factory = WebSocketServerFactory("ws://localhost:4002")  # FIXME: url
+        ws_factory = WebSocketServerFactory("ws://localhost:4002")
         ws_factory.protocol = WebSocketTransitConnection
         ws_factory.transit = self._transit_server
-        ws_factory.websocket_protocols = ["binary"]
         ws_protocol = ws_factory.buildProtocol(('127.0.0.1', 0))
-
-        from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol
 
         class TransitWebSocketClientProtocol(WebSocketClientProtocol):
             def send(self, data):
