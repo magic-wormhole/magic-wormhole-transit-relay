@@ -217,7 +217,6 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         """
         ITransitClient API
         """
-        print("send: {}".format(repr(data)))
         self.sendMessage(data, isBinary=True)
 
     def disconnect(self):
@@ -256,7 +255,6 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         """
         IProtocol API
         """
-        print("connectionMade")
         super(WebSocketTransitConnection, self).connectionMade()
         self.started_time = time.time()
         self._first_message = True
@@ -281,7 +279,6 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
             raise ValueError(
                 "All messages must be binary"
             )
-        # print("onMessage isBinary={}: {}".format(isBinary, payload))
         if self._first_message:
             self._first_message = False
             token = None
@@ -311,6 +308,4 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         """
         IWebSocketChannel API
         """
-        print("{} onClose: {} {} {}".format(id(self), wasClean, code, reason))
         self._state.connection_lost()
-        # XXX "transit finished", etc
