@@ -13,7 +13,7 @@ from ..transit_server import (
 )
 
 
-class ITransitClient(Interface):
+class IRelayTestClient(Interface):
     """
     The client interface used by tests.
     """
@@ -69,11 +69,11 @@ class ServerBase:
     def new_protocol(self):
         """
         Create a new client protocol connected to the server.
-        :returns: a ITransitClient implementation
+        :returns: a IRelayTestClient implementation
         """
         server_protocol = self._transit_server.buildProtocol(('127.0.0.1', 0))
 
-        @implementer(ITransitClient)
+        @implementer(IRelayTestClient)
         class TransitClientProtocolTcp(Protocol):
             """
             Speak the transit client protocol used by the tests over TCP
@@ -94,7 +94,7 @@ class ServerBase:
             def dataReceived(self, data):
                 self._received = self._received + data
 
-            # ITransitClient API
+            # IRelayTestClient
 
             def send(self, data):
                 self.transport.write(data)
