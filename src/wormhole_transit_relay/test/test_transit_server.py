@@ -11,6 +11,7 @@ from autobahn.twisted.testing import (
     create_pumper,
     MemoryReactorClockResolver,
 )
+from autobahn.exception import Disconnected
 from .common import ServerBase
 from ..server_state import (
     MemoryUsageRecorder,
@@ -364,6 +365,34 @@ class TransitWebSockets(_Transit, ServerBase, unittest.TestCase):
         """
         This test only makes sense for TCP
         """
+
+    def test_send_closed_partner(self):
+        """
+        Sending data to a closed partner causes an error that propogates
+        to the sender.
+        """
+        p1 = self.new_protocol()
+        p2 = self.new_protocol()
+
+        # set up a successful connection
+        token = b"a" * 32
+        p1.send(handshake(token))
+        p2.send(handshake(token))
+        self.flush()
+
+        # p2 loses connection, then p1 sends a message
+        p2.transport.loseConnection()
+        self.flush()
+        p1.send(b"more message")
+        self.flush()
+
+        # at this point, p1 learns that p2 is disconnected (because it
+        # tried to relay "a message" but failed)
+
+        # try to send more (our partner p2 is gone now though so it
+        # should be an immediate error)
+        with self.assertRaises(Disconnected):
+            p1.send(b"more message")
 
     def new_protocol(self):
         ws_factory = WebSocketServerFactory("ws://localhost:4002")
