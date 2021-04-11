@@ -12,7 +12,11 @@ from autobahn.twisted.testing import (
     MemoryReactorClockResolver,
 )
 from autobahn.exception import Disconnected
-from .common import ServerBase
+from zope.interface import implementer
+from .common import (
+    ServerBase,
+    IRelayTestClient,
+)
 from ..server_state import (
     MemoryUsageRecorder,
     blur_size,
@@ -400,6 +404,7 @@ class TransitWebSockets(_Transit, ServerBase, unittest.TestCase):
         ws_factory.transit = self._transit_server
         ws_protocol = ws_factory.buildProtocol(('127.0.0.1', 0))
 
+        @implementer(IRelayTestClient)
         class TransitWebSocketClientProtocol(WebSocketClientProtocol):
             _received = b""
             connected = False
