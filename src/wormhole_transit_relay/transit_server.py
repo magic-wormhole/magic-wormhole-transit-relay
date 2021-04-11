@@ -114,11 +114,6 @@ class TransitConnection(LineReceiver):
         # receiver can handle it.
         self._state.got_bytes(data)
 
-    def disconnect_redundant(self):
-        # this is called if a buddy connected and we were found unnecessary.
-        # Any token-tracking cleanup will have been done before we're called.
-        self.transport.loseConnection()
-
     def connectionLost(self, reason):
         self._state.connection_lost()
 # XXX this probably resulted in a log message we've not refactored yet
@@ -271,11 +266,6 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
             except Exception as e:
                 log.err("Failed to send to partner: {}".format(e))
                 self.sendClose(3000, "send to partner failed")
-
-    def disconnect_redundant(self):
-        # this is called if a buddy connected and we were found unnecessary.
-        # Any token-tracking cleanup will have been done before we're called.
-        self.transport.loseConnection()
 
     def onClose(self, wasClean, code, reason):
         """

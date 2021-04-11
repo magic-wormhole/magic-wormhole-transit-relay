@@ -351,7 +351,6 @@ class PendingRequests(object):
                     # can happen if the connection hint contains multiple
                     # addresses (we don't currently support those, but it'd
                     # probably be useful in the future).
-                    ##leftover_tc.disconnect_redundant()
                     leftover_tc.partner_connection_lost()
                 self._requests.pop(token, None)
 
