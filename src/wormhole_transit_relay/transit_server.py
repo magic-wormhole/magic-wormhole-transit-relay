@@ -114,14 +114,6 @@ class TransitConnection(LineReceiver):
         # receiver can handle it.
         self._state.got_bytes(data)
 
-    def disconnect_error(self):
-        # we haven't finished the handshake, so there are no tokens tracking
-        # us
-        self.transport.loseConnection()
-        # XXX probably should be logged by state?
-        if self.factory.transit._debug_log:
-            log.msg("transitFailed %r" % self)
-
     def disconnect_redundant(self):
         # this is called if a buddy connected and we were found unnecessary.
         # Any token-tracking cleanup will have been done before we're called.
@@ -175,7 +167,6 @@ class Transit(object):
         self.active_connections = ActiveConnections()
         self.pending_requests = PendingRequests(self.active_connections)
         self.usage = usage
-        self._debug_log = False
         self._timestamp = get_timestamp
         self._rebooted = self._timestamp()
 
