@@ -12,6 +12,10 @@ from twisted.python import log
 
 
 class ITransitClient(Interface):
+    """
+    Represents the client side of a connection to this transit
+    relay. This is used by TransitServerState instances.
+    """
 
     started_time = Attribute("timestamp when the connection was established")
 
@@ -61,6 +65,9 @@ class IUsageWriter(Interface):
 
 @implementer(IUsageWriter)
 class MemoryUsageRecorder:
+    """
+    Remebers usage records in memory.
+    """
 
     def __init__(self):
         self.events = []
@@ -81,6 +88,10 @@ class MemoryUsageRecorder:
 
 @implementer(IUsageWriter)
 class LogFileUsageRecorder:
+    """
+    Writes usage records to a file. The records are written in JSON,
+    one record per line.
+    """
 
     def __init__(self, writable_file):
         self._file = writable_file
@@ -102,6 +113,9 @@ class LogFileUsageRecorder:
 
 @implementer(IUsageWriter)
 class DatabaseUsageRecorder:
+    """
+    Write usage records into a database
+    """
 
     def __init__(self, db):
         self._db = db
@@ -174,7 +188,6 @@ class UsageTracker(object):
         self._blur_usage = blur_usage
         if blur_usage:
             log.msg("blurring access times to %d seconds" % self._blur_usage)
-## XXX            log.msg("not logging Transit connections to Twisted log")
         else:
             log.msg("not blurring access times")
 
