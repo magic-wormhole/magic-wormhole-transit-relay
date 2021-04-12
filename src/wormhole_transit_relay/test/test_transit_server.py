@@ -396,6 +396,7 @@ class TransitWebSockets(_Transit, ServerBase, unittest.TestCase):
         # should be an immediate error)
         with self.assertRaises(Disconnected):
             p1.send(b"more message")
+            self.flush()
 
     def new_protocol(self):
         ws_factory = WebSocketServerFactory("ws://localhost:4002")

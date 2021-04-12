@@ -261,11 +261,7 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
             if token is None:
                 self._state.bad_token()
         else:
-            try:
-                self._state.got_bytes(payload)
-            except Exception as e:
-                log.err("Failed to send to partner: {}".format(e))
-                self.sendClose(3000, "send to partner failed")
+            self._state.got_bytes(payload)
 
     def onClose(self, wasClean, code, reason):
         """
