@@ -61,7 +61,6 @@ class _Transit:
         self.flush()
         p2.send(handshake(token1, side=None))
         self.flush()
-        self.flush()
 
         # a correct handshake yields an ack, after which we can send
         exp = b"ok\n"
@@ -89,7 +88,6 @@ class _Transit:
         self.flush()
         p2.send(handshake(token1, side=None))
         self.flush()
-        self.flush()
 
         # a correct handshake yields an ack, after which we can send
         exp = b"ok\n"
@@ -116,7 +114,6 @@ class _Transit:
         side1 = b"\x01"*8
         p1.send(handshake(token1, side=None))
         p2.send(handshake(token1, side=side1))
-        self.flush()
         self.flush()
 
         # a correct handshake yields an ack, after which we can send
@@ -146,7 +143,6 @@ class _Transit:
         p1.send(handshake(token1, side=side1))
         self.flush()
         p2.send(handshake(token1, side=side2))
-        self.flush()
         self.flush()
 
         # a correct handshake yields an ack, after which we can send
@@ -186,7 +182,6 @@ class _Transit:
         # closed
         side2 = b"\x02"*8
         p3.send(handshake(token1, side=side2))
-        self.flush()
         self.flush()
         self.assertEqual(self.count(), 0)
         self.assertEqual(len(self._transit_server._pending_requests), 0)
@@ -452,7 +447,6 @@ class Usage(ServerBase, unittest.TestCase):
         self.assertEqual(result, "lonely", self._usage)
 
         p2.send(handshake(token1, side=side2))
-        self.flush()
         self.flush()
         self.assertEqual(len(self._transit_server._pending_requests), 0)
         self.assertEqual(len(self._usage), 2, self._usage)

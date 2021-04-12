@@ -55,8 +55,11 @@ class ServerBase:
         self._setup_relay(blur_usage=blur_usage)
 
     def flush(self):
+        did_work = False
         for pump in self._pumps:
-            pump.flush()
+            did_work = pump.flush() or did_work
+        if did_work:
+            self.flush()
 
     def _setup_relay(self, blur_usage=None, log_file=None, usage_db=None):
         self._transit_server = Transit(
