@@ -77,6 +77,7 @@ class _Transit:
 
         p1.disconnect()
         p2.disconnect()
+        self.flush()
 
     def test_sided_unsided(self):
         p1 = self.new_protocol()
@@ -105,6 +106,7 @@ class _Transit:
 
         p1.disconnect()
         p2.disconnect()
+        self.flush()
 
     def test_unsided_sided(self):
         p1 = self.new_protocol()
