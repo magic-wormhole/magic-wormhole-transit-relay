@@ -13,7 +13,7 @@ from ..transit_server import (
     TransitConnection,
 )
 from twisted.internet.protocol import ServerFactory
-from ..server_state import create_usage_tracker
+from ..usage import create_usage_tracker
 
 
 class IRelayTestClient(Interface):

@@ -6,7 +6,7 @@ except ImportError:
     import mock
 from twisted.trial import unittest
 from ..transit_server import Transit
-from ..server_state import create_usage_tracker
+from ..usage import create_usage_tracker
 from .. import database
 
 class DB(unittest.TestCase):

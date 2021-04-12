@@ -17,7 +17,7 @@ from .common import (
     ServerBase,
     IRelayTestClient,
 )
-from ..server_state import (
+from ..usage import (
     MemoryUsageRecorder,
     blur_size,
 )
