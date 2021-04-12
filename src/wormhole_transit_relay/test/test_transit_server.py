@@ -99,7 +99,6 @@ class _Transit:
         self.assertEqual(p2.get_received_data(), s1)
 
         p1.disconnect()
-        p2.disconnect()
         self.flush()
 
     def test_sided_unsided(self):
@@ -128,7 +127,6 @@ class _Transit:
         self.assertEqual(p2.get_received_data(), s1)
 
         p1.disconnect()
-        p2.disconnect()
         self.flush()
 
     def test_unsided_sided(self):
@@ -365,6 +363,9 @@ class TransitWithoutLogs(_Transit, ServerBase, unittest.TestCase):
 
 class TransitWebSockets(_Transit, ServerBase, unittest.TestCase):
 
+    # XXX note to self, from pairing with Flo:
+    # - write a WS <--> TCP version of at least one of these tests?
+
     def test_bad_handshake_old_slow(self):
         """
         This test only makes sense for TCP
@@ -386,8 +387,6 @@ class TransitWebSockets(_Transit, ServerBase, unittest.TestCase):
 
         # p2 loses connection, then p1 sends a message
         p2.transport.loseConnection()
-        self.flush()
-        p1.send(b"more message")
         self.flush()
 
         # at this point, p1 learns that p2 is disconnected (because it
@@ -417,17 +416,20 @@ class TransitWebSockets(_Transit, ServerBase, unittest.TestCase):
                 self.connected = False
                 return super(TransitWebSocketClientProtocol, self).connectionLost(reason)
 
-            def send(self, data):
-                self.sendMessage(data, True)
-
             def onMessage(self, data, isBinary):
                 self._received = self._received + data
+
+            def send(self, data):
+                self.sendMessage(data, True)
 
             def get_received_data(self):
                 return self._received
 
             def reset_received_data(self):
                 self._received = b""
+
+            def disconnect(self):
+                self.sendClose(1000, True)
 
         client_factory = WebSocketClientFactory()
         client_factory.protocol = TransitWebSocketClientProtocol
