@@ -1,5 +1,8 @@
 from __future__ import print_function, unicode_literals
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 from twisted.trial import unittest
 from ..increase_rlimits import increase_rlimits
 
