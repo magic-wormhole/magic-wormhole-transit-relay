@@ -246,6 +246,10 @@ class TransitServerState(object):
     def _remember_client(self, client):
         self._client = client
 
+    # note that there is no corresponding "_forget_client" because we
+    # may still want to access it after it is gone .. for example, to
+    # get the .started_time for logging purposes
+
     @_machine.output()
     def _register_token(self, token):
         return self._real_register_token_for_side(token, None)
@@ -388,13 +392,10 @@ class TransitServerState(object):
         Terminal state
         """
 
-    # need a listening.upon(connection_lost) for special websocket
-    # case where handshake fails?
-
     listening.upon(
         connection_made,
         enter=wait_relay,
-        outputs=[_remember_client],  # XXX need _forget_client ?
+        outputs=[_remember_client],
     )
     listening.upon(
         connection_lost,
