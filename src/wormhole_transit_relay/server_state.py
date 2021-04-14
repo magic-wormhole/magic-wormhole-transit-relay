@@ -1,14 +1,10 @@
-import time
-import json
 from collections import defaultdict
 
 import automat
 from zope.interface import (
     Interface,
     Attribute,
-    implementer,
 )
-from twisted.python import log
 
 
 class ITransitClient(Interface):
