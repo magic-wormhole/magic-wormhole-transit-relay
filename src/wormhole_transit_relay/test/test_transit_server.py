@@ -508,7 +508,10 @@ class Usage(ServerBase, unittest.TestCase):
         self.assertEqual(self._usage.events[0]["mood"], "empty", self._usage)
 
     def test_short(self):
-        # XXX this test only makes sense for TCP
+        # Note: this test only runs on TCP clients because WebSockets
+        # already does framing (so it's either "a bad handshake" or
+        # there's no handshake at all yet .. you can't have a "short"
+        # one).
         p1 = self.new_protocol()
         # hang up before sending a complete handshake
         p1.send(b"short")
