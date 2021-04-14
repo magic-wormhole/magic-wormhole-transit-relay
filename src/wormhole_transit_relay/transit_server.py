@@ -116,9 +116,6 @@ class TransitConnection(LineReceiver):
 
     def connectionLost(self, reason):
         self._state.connection_lost()
-# XXX this probably resulted in a log message we've not refactored yet
-#        self.factory.transitFinished(self, self._got_token, self._got_side,
-#                                     self.describeToken())
 
 
 class Transit(object):
