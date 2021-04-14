@@ -34,6 +34,9 @@ def handshake(token, side=None):
     return hs
 
 class _Transit:
+    def new_protocol(self):
+        return self.new_protocol_tcp()
+
     def count(self):
         return sum([
             len(potentials)
@@ -366,6 +369,9 @@ class TransitWebSockets(_Transit, ServerBase, unittest.TestCase):
     # XXX note to self, from pairing with Flo:
     # - write a WS <--> TCP version of at least one of these tests?
 
+    def new_protocol(self):
+        return self.new_protocol_ws()
+
     def test_bad_handshake_old_slow(self):
         """
         This test only makes sense for TCP
@@ -398,7 +404,7 @@ class TransitWebSockets(_Transit, ServerBase, unittest.TestCase):
             p1.send(b"more message")
             self.flush()
 
-    def new_protocol(self):
+    def new_protocol_ws(self):
         ws_factory = WebSocketServerFactory("ws://localhost:4002")
         ws_factory.protocol = WebSocketTransitConnection
         ws_factory.transit = self._transit_server
@@ -454,6 +460,9 @@ class Usage(ServerBase, unittest.TestCase):
         super(Usage, self).setUp()
         self._usage = MemoryUsageRecorder()
         self._transit_server.usage.add_backend(self._usage)
+
+    def new_protocol(self):
+        return self.new_protocol_tcp()
 
     def test_empty(self):
         p1 = self.new_protocol()
@@ -587,6 +596,9 @@ class UsageWebSockets(Usage):
     def tearDown(self):
         return self._pump.stop()
 
+    def new_protocol(self):
+        return self.new_protocol_ws()
+
     def test_short(self):
         """
         This test essentially just tests the framing of the line-oriented
@@ -605,7 +617,7 @@ class UsageWebSockets(Usage):
         with self.assertRaises(ValueError):
             ws_protocol.onMessage(u"foo", isBinary=False)
 
-    def new_protocol(self):
+    def new_protocol_ws(self):
         ws_factory = WebSocketServerFactory("ws://localhost:4002")
         ws_factory.protocol = WebSocketTransitConnection
         ws_factory.transit = self._transit_server

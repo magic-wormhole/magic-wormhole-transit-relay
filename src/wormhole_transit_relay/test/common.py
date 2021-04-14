@@ -75,6 +75,13 @@ class ServerBase:
 
     def new_protocol(self):
         """
+        This should be overridden by derived test-case classes to decide
+        if they want a TCP or WebSockets protocol.
+        """
+        raise NotImplementedError()
+
+    def new_protocol_tcp(self):
+        """
         Create a new client protocol connected to the server.
         :returns: a IRelayTestClient implementation
         """
