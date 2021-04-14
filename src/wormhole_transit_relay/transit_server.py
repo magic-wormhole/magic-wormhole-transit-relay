@@ -52,10 +52,7 @@ class TransitConnection(LineReceiver):
     def connectionMade(self):
         self._started = time.time()
         self._log_requests = self.factory._log_requests
-        try:
-            self.transport.setTcpKeepAlive(True)
-        except AttributeError:
-            pass
+        self.transport.setTcpKeepAlive(True)
 
     def lineReceived(self, line):
         # old: "please relay {64}\n"
