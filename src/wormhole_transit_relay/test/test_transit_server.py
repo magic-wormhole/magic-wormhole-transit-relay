@@ -369,11 +369,41 @@ class TransitWithoutLogs(_Transit, ServerBase, unittest.TestCase):
 
 class TransitWebSockets(_Transit, ServerBase, unittest.TestCase):
 
-    # XXX note to self, from pairing with Flo:
-    # - write a WS <--> TCP version of at least one of these tests?
-
     def new_protocol(self):
         return self.new_protocol_ws()
+
+    def test_websocket_to_tcp(self):
+        """
+        One client is WebSocket and one is TCP
+        """
+        p1 = self.new_protocol_ws()
+        p2 = self.new_protocol_tcp()
+
+        token1 = b"\x00"*32
+        side1 = b"\x01"*8
+        side2 = b"\x02"*8
+        p1.send(handshake(token1, side=side1))
+        self.flush()
+        p2.send(handshake(token1, side=side2))
+        self.flush()
+
+        # a correct handshake yields an ack, after which we can send
+        exp = b"ok\n"
+        self.assertEqual(p1.get_received_data(), exp)
+        self.assertEqual(p2.get_received_data(), exp)
+
+        p1.reset_received_data()
+        p2.reset_received_data()
+
+        # all data they sent after the handshake should be given to us
+        s1 = b"data1"
+        p1.send(s1)
+        self.flush()
+        self.assertEqual(p2.get_received_data(), s1)
+
+        p1.disconnect()
+        p2.disconnect()
+        self.flush()
 
     def test_bad_handshake_old_slow(self):
         """
