@@ -34,9 +34,6 @@ def handshake(token, side=None):
     return hs
 
 class _Transit:
-    def new_protocol(self):
-        return self.new_protocol_tcp()
-
     def count(self):
         return sum([
             len(potentials)
@@ -359,9 +356,15 @@ class _Transit:
 class TransitWithLogs(_Transit, ServerBase, unittest.TestCase):
     log_requests = True
 
+    def new_protocol(self):
+        return self.new_protocol_tcp()
+
 
 class TransitWithoutLogs(_Transit, ServerBase, unittest.TestCase):
     log_requests = False
+
+    def new_protocol(self):
+        return self.new_protocol_tcp()
 
 
 class TransitWebSockets(_Transit, ServerBase, unittest.TestCase):
