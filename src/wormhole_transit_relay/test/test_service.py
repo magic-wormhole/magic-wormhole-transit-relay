@@ -5,6 +5,7 @@ try:
 except ImportError:
     import mock
 from twisted.application.service import MultiService
+from autobahn.twisted.websocket import WebSocketServerFactory
 from .. import server_tap
 
 class Service(unittest.TestCase):
@@ -40,3 +41,13 @@ class Service(unittest.TestCase):
                          [mock.call(blur_usage=None,
                                     log_file=fd, usage_db=None)])
 
+    def test_websocket(self):
+        o = server_tap.Options()
+        o.parseOptions(["--websocket=tcp:4004"])
+        services = server_tap.makeService(o)
+        self.assertTrue(
+            any(
+                isinstance(s.factory, WebSocketServerFactory)
+                for s in services.services
+            )
+        )
