@@ -70,9 +70,9 @@ def makeService(config, reactor=reactor):
             print("Using WebSocket URL '{}'".format(ws_url))
         ws_factory = WebSocketServerFactory(ws_url)
         ws_factory.protocol = transit_server.WebSocketTransitConnection
+        ws_factory.transit = transit
 
     tcp_factory.transit = transit
-    ws_factory.transit = transit
     parent = MultiService()
     StreamServerEndpointService(tcp_ep, tcp_factory).setServiceParent(parent)
     if ws_ep is not None:

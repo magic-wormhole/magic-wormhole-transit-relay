@@ -9,12 +9,14 @@ class Config(unittest.TestCase):
         o = server_tap.Options()
         o.parseOptions([])
         self.assertEqual(o, {"blur-usage": None, "log-fd": None,
-                             "usage-db": None, "port": PORT})
+                             "usage-db": None, "port": PORT,
+                             "websocket": None, "websocket-url": None})
     def test_blur(self):
         o = server_tap.Options()
         o.parseOptions(["--blur-usage=60"])
         self.assertEqual(o, {"blur-usage": 60, "log-fd": None,
-                             "usage-db": None, "port": PORT})
+                             "usage-db": None, "port": PORT,
+                             "websocket": None, "websocket-url": None})
 
     def test_string(self):
         o = server_tap.Options()
