@@ -471,6 +471,5 @@ class TransitServerState(object):
         outputs=[],
     )
 
-
-    ## XXX tracing
-    set_trace_function = _machine._setTrace
+    # uncomment to turn on state-machine tracing
+    # set_trace_function = _machine._setTrace

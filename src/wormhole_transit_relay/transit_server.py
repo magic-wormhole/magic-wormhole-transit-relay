@@ -74,10 +74,10 @@ class TransitConnection(LineReceiver):
         except AttributeError:
             pass
 
-        if False:
-            def tracer(oldstate, theinput, newstate):
-                print("TRACE: {}: {} --{}--> {}".format(id(self), oldstate, theinput, newstate))
-            self._state.set_trace_function(tracer)
+        # uncomment to turn on state-machine tracing
+        # def tracer(oldstate, theinput, newstate):
+        #     print("TRACE: {}: {} --{}--> {}".format(id(self), oldstate, theinput, newstate))
+        # self._state.set_trace_function(tracer)
 
     def lineReceived(self, line):
         """
@@ -227,10 +227,10 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
             self.factory.transit.usage,
         )
 
-        if False:
-            def tracer(oldstate, theinput, newstate):
-                print("WSTRACE: {}: {} --{}--> {}".format(id(self), oldstate, theinput, newstate))
-            self._state.set_trace_function(tracer)
+        # uncomment to turn on state-machine tracing
+        # def tracer(oldstate, theinput, newstate):
+        #    print("WSTRACE: {}: {} --{}--> {}".format(id(self), oldstate, theinput, newstate))
+        # self._state.set_trace_function(tracer)
 
     def onOpen(self):
         self._state.connection_made(self)
