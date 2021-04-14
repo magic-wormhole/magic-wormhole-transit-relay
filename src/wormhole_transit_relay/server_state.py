@@ -121,8 +121,6 @@ class PendingRequests(object):
                 or (new_side is None)
                 or (old_side != new_side)):
                 # we found a match
-                # FIXME: debug-log this
-                # print("transit relay 2: %s" % new_tc.get_token())
 
                 # drop and stop tracking the rest
                 potentials.remove(old)
@@ -141,8 +139,6 @@ class PendingRequests(object):
                 old_tc.got_partner(new_tc)
                 return False
 
-        # FIXME: debug-log this
-        # print("transit relay 1: %s" % new_tc.get_token())
         potentials.add((new_side, new_tc))
         return True
         # TODO: timer
