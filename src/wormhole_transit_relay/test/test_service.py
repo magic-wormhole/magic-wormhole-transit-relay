@@ -1,9 +1,5 @@
-from __future__ import unicode_literals, print_function
 from twisted.trial import unittest
-try:
-    from unittest import mock
-except ImportError:
-    import mock
+from unittest import mock
 from twisted.application.service import MultiService
 from autobahn.twisted.websocket import WebSocketServerFactory
 from .. import server_tap

@@ -1,4 +1,3 @@
-from __future__ import print_function, unicode_literals
 import re
 import time
 from twisted.python import log
@@ -69,10 +68,7 @@ class TransitConnection(LineReceiver):
         )
         self._state.connection_made(self)
 ##        self._log_requests = self.factory._log_requests
-        try:
-            self.transport.setTcpKeepAlive(True)
-        except AttributeError:
-            pass
+        self.transport.setTcpKeepAlive(True)
 
         # uncomment to turn on state-machine tracing
         # def tracer(oldstate, theinput, newstate):
