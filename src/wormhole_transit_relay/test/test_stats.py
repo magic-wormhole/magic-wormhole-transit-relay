@@ -1,9 +1,5 @@
-from __future__ import print_function, unicode_literals
 import os, io, json, sqlite3
-try:
-    from unittest import mock
-except ImportError:
-    import mock
+from unittest import mock
 from twisted.trial import unittest
 from ..transit_server import Transit
 from .. import database
