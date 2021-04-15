@@ -67,7 +67,6 @@ class TransitConnection(LineReceiver):
             self.factory.transit.usage,
         )
         self._state.connection_made(self)
-##        self._log_requests = self.factory._log_requests
         self.transport.setTcpKeepAlive(True)
 
         # uncomment to turn on state-machine tracing
