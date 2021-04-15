@@ -1,4 +1,3 @@
-from __future__ import print_function, unicode_literals
 import re, time, json
 from collections import defaultdict
 from twisted.python import log

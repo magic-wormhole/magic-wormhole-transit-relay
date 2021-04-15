@@ -7,7 +7,6 @@ Use the following in /etc/munin/plugin-conf.d/wormhole :
 env.usagedb /path/to/your/wormhole/server/usage.sqlite
 """
 
-from __future__ import print_function
 import os, sys, time, sqlite3
 
 CONFIG = """\

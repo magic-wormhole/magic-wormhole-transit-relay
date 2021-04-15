@@ -18,7 +18,6 @@ The resuting "usage.sqlite" should be passed into --usage-db=, e.g. "twist
 transitrelay --usage=.../PATH/TO/usage.sqlite".
 """
 
-from __future__ import unicode_literals, print_function
 import sys
 from wormhole_transit_relay.database import open_existing_db, create_db
 
