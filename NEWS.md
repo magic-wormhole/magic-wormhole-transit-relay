@@ -1,5 +1,9 @@
 User-visible changes in "magic-wormhole-transit-relay":
 
+## unreleased
+
+* drop Python 2, Python 3.5 and 3.6 support
+
 ## Release 0.2.1 (11-Sep-2019)
 
 * listen on IPv4+IPv6 properly (#12)
