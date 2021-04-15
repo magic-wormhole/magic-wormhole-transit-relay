@@ -1,4 +1,9 @@
-from __future__ import print_function
+"""
+This is a test-client for the transit-relay that uses TCP. It
+doesn't send any data, only prints out data that is received. Uses a
+fixed token of 64 'a' characters. Always connects on localhost:4001
+"""
+
 
 from twisted.internet import endpoints
 from twisted.internet.defer import (

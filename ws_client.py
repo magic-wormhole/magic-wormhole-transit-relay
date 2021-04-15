@@ -1,4 +1,12 @@
-from __future__ import print_function
+"""
+This is a test-client for the transit-relay that uses WebSockets.
+
+If an additional command-line argument (anything) is added, it will
+send 5 messages upon connection. Otherwise, it just prints out what is
+received. Uses a fixed token of 64 'a' characters. Always connects on
+localhost:4002
+"""
+
 import sys
 
 from twisted.internet import endpoints
