@@ -440,6 +440,7 @@ class TransitWebSockets(_Transit, ServerBase, unittest.TestCase):
         ws_factory = WebSocketServerFactory("ws://localhost:4002")
         ws_factory.protocol = WebSocketTransitConnection
         ws_factory.transit = self._transit_server
+        ws_factory.log_requests = self.log_requests
         ws_protocol = ws_factory.buildProtocol(('127.0.0.1', 0))
 
         @implementer(IRelayTestClient)
@@ -656,6 +657,7 @@ class UsageWebSockets(Usage):
         ws_factory = WebSocketServerFactory("ws://localhost:4002")
         ws_factory.protocol = WebSocketTransitConnection
         ws_factory.transit = self._transit_server
+        ws_factory.log_requests = self.log_requests
         ws_protocol = ws_factory.buildProtocol(('127.0.0.1', 0))
 
         class TransitWebSocketClientProtocol(WebSocketClientProtocol):

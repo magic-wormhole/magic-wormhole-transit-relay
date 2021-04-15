@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 import automat
+from twisted.python import log
 from zope.interface import (
     Interface,
     Attribute,
@@ -265,6 +266,8 @@ class TransitServerState(object):
     def _send_bad(self):
         self._mood = "errory"
         self._client.send(b"bad handshake\n")
+        if self._client.factory.log_requests:
+            log.msg("transit handshake failure")
 
     @_machine.output()
     def _send_ok(self):
@@ -273,6 +276,8 @@ class TransitServerState(object):
     @_machine.output()
     def _send_impatient(self):
         self._client.send(b"impatient\n")
+        if self._client.factory.log_requests:
+            log.msg("transit impatience failure")
 
     @_machine.output()
     def _count_bytes(self, data):

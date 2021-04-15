@@ -88,6 +88,7 @@ class ServerBase:
         server_factory = ServerFactory()
         server_factory.protocol = TransitConnection
         server_factory.transit = self._transit_server
+        server_factory.log_requests = self.log_requests
         server_protocol = server_factory.buildProtocol(('127.0.0.1', 0))
 
         @implementer(IRelayTestClient)

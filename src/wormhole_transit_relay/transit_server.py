@@ -53,7 +53,8 @@ class TransitConnection(LineReceiver):
         ITransitClient API
         """
         if self._buddy is not None:
-            log.msg("buddy_disconnected {}".format(self._buddy.get_token()))
+            if self.factory.log_requests:
+                log.msg("buddy_disconnected {}".format(self._buddy.get_token()))
             self._buddy._client.disconnect()
             self._buddy = None
 
@@ -203,7 +204,8 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         ITransitClient API
         """
         if self._buddy is not None:
-            log.msg("buddy_disconnected {}".format(self._buddy.get_token()))
+            if self.factory.log_requests:
+                log.msg("buddy_disconnected {}".format(self._buddy.get_token()))
             self._buddy._client.disconnect()
             self._buddy = None
 

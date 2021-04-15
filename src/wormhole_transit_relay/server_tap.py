@@ -59,6 +59,7 @@ def makeService(config, reactor=reactor):
     transit = transit_server.Transit(usage, reactor.seconds)
     tcp_factory = protocol.ServerFactory()
     tcp_factory.protocol = transit_server.TransitConnection
+    tcp_factory.log_requests = False
 
     if ws_ep is not None:
         ws_url = config["websocket-url"]
@@ -71,6 +72,7 @@ def makeService(config, reactor=reactor):
         ws_factory = WebSocketServerFactory(ws_url)
         ws_factory.protocol = transit_server.WebSocketTransitConnection
         ws_factory.transit = transit
+        ws_factory.log_requests = False
 
     tcp_factory.transit = transit
     parent = MultiService()
