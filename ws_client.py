@@ -7,21 +7,11 @@ from twisted.internet.defer import (
     inlineCallbacks,
 )
 from twisted.internet.task import react, deferLater
-from twisted.internet.error import (
-    ConnectionDone,
-)
-from twisted.internet.protocol import (
-    Protocol,
-    Factory,
-)
-from twisted.protocols.basic import LineReceiver
-from twisted.application.internet import StreamServerEndpointService
 
 from autobahn.twisted.websocket import (
     WebSocketClientProtocol,
     WebSocketClientFactory,
 )
-from autobahn.websocket import types
 
 
 class RelayEchoClient(WebSocketClientProtocol):
