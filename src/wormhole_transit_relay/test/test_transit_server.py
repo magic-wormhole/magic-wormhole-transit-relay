@@ -22,6 +22,7 @@ from ..usage import (
 )
 from ..transit_server import (
     WebSocketTransitConnection,
+    TransitServerState,
 )
 
 
@@ -677,3 +678,18 @@ class UsageWebSockets(Usage):
         )
         self._pumps.append(pump)
         return client_protocol
+
+
+class State(unittest.TestCase):
+    """
+    Tests related to server_state.TransitServerState
+    """
+
+    def setUp(self):
+        self.state = TransitServerState(None, None)
+
+    def test_empty_token(self):
+        self.assertEqual(
+            "-",
+            self.state.get_token(),
+        )

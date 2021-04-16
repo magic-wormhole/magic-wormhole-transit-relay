@@ -178,10 +178,11 @@ class TransitServerState(object):
         d = "-"
         if self._token is not None:
             d = self._token[:16].decode("ascii")
-        if self._side is not None:
-            d += "-" + self._side.decode("ascii")
-        else:
-            d += "-<unsided>"
+
+            if self._side is not None:
+                d += "-" + self._side.decode("ascii")
+            else:
+                d += "-<unsided>"
         return d
 
     @_machine.input()
