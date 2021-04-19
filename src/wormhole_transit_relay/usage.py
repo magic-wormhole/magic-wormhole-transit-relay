@@ -213,7 +213,6 @@ class UsageTracker(object):
                      incomplete_bytes)
                 )
 
-
     def _notify_backends(self, data):
         """
         Internal helper. Tell every backend we have about a new usage record.

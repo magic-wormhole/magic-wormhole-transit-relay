@@ -38,6 +38,9 @@ class Service(unittest.TestCase):
                                     log_file=fd, usage_db=None)])
 
     def test_websocket(self):
+        """
+        A websocket factory is created when passing --websocket
+        """
         o = server_tap.Options()
         o.parseOptions(["--websocket=tcp:4004"])
         services = server_tap.makeService(o)
