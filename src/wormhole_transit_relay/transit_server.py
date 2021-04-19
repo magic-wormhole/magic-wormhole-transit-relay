@@ -52,11 +52,11 @@ class TransitConnection(LineReceiver):
         """
         ITransitClient API
         """
-        if self._buddy is not None:
-            if self.factory.log_requests:
-                log.msg("buddy_disconnected {}".format(self._buddy.get_token()))
-            self._buddy._client.disconnect()
-            self._buddy = None
+        assert self._buddy is not None, "internal error: no buddy"
+        if self.factory.log_requests:
+            log.msg("buddy_disconnected {}".format(self._buddy.get_token()))
+        self._buddy._client.disconnect()
+        self._buddy = None
 
     def connectionMade(self):
         # ideally more like self._reactor.seconds() ... but Twisted
@@ -203,11 +203,11 @@ class WebSocketTransitConnection(WebSocketServerProtocol):
         """
         ITransitClient API
         """
-        if self._buddy is not None:
-            if self.factory.log_requests:
-                log.msg("buddy_disconnected {}".format(self._buddy.get_token()))
-            self._buddy._client.disconnect()
-            self._buddy = None
+        assert self._buddy is not None, "internal error: no buddy"
+        if self.factory.log_requests:
+            log.msg("buddy_disconnected {}".format(self._buddy.get_token()))
+        self._buddy._client.disconnect()
+        self._buddy = None
 
     def connectionMade(self):
         """
