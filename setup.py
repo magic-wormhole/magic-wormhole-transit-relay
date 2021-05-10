@@ -18,7 +18,8 @@ setup(name="magic-wormhole-transit-relay",
                 ],
       package_data={"wormhole_transit_relay": ["db-schemas/*.sql"]},
       install_requires=[
-          "twisted >= 17.5.0",
+          "twisted >= 21.2.0",
+          "autobahn >= 21.3.1",
       ],
       extras_require={
           ':sys_platform=="win32"': ["pypiwin32"],

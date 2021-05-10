@@ -10,7 +10,10 @@ from zope.interface import (
 )
 from ..transit_server import (
     Transit,
+    TransitConnection,
 )
+from twisted.internet.protocol import ServerFactory
+from ..usage import create_usage_tracker
 
 
 class IRelayTestClient(Interface):
@@ -42,6 +45,7 @@ class IRelayTestClient(Interface):
         Erase any received data to this point.
         """
 
+
 class ServerBase:
     log_requests = False
 
@@ -62,19 +66,30 @@ class ServerBase:
             self.flush()
 
     def _setup_relay(self, blur_usage=None, log_file=None, usage_db=None):
-        self._transit_server = Transit(
+        usage = create_usage_tracker(
             blur_usage=blur_usage,
             log_file=log_file,
             usage_db=usage_db,
         )
-        self._transit_server._debug_log = self.log_requests
+        self._transit_server = Transit(usage, lambda: 123456789.0)
 
     def new_protocol(self):
+        """
+        This should be overridden by derived test-case classes to decide
+        if they want a TCP or WebSockets protocol.
+        """
+        raise NotImplementedError()
+
+    def new_protocol_tcp(self):
         """
         Create a new client protocol connected to the server.
         :returns: a IRelayTestClient implementation
         """
-        server_protocol = self._transit_server.buildProtocol(('127.0.0.1', 0))
+        server_factory = ServerFactory()
+        server_factory.protocol = TransitConnection
+        server_factory.transit = self._transit_server
+        server_factory.log_requests = self.log_requests
+        server_protocol = server_factory.buildProtocol(('127.0.0.1', 0))
 
         @implementer(IRelayTestClient)
         class TransitClientProtocolTcp(Protocol):

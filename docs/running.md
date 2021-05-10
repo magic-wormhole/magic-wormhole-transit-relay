@@ -50,6 +50,15 @@ The relevant arguments are:
 * ``--usage-db=``: maintains a SQLite database with current and historical usage data
 * ``--blur-usage=``: round logged timestamps and data sizes
 
+For WebSockets support, two additional arguments:
+
+* ``--websocket``: the endpoint to listen for websocket connections
+  on, like ``tcp:4002``
+* ``--websocket-url``: the URL of the WebSocket connection. This may
+  be different from the listening endpoint because of port-forwarding
+  and so forth. By default it will be ``ws://localhost:<port>`` if not
+  provided
+
 When you use ``twist``, the relay runs in the foreground, so it will
 generally exit as soon as the controlling terminal exits. For persistent
 environments, you should daemonize the server.

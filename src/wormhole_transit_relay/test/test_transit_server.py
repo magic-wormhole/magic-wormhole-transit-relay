@@ -1,7 +1,30 @@
 from binascii import hexlify
 from twisted.trial import unittest
-from .common import ServerBase
-from .. import transit_server
+from twisted.test import iosim
+from autobahn.twisted.websocket import (
+    WebSocketServerFactory,
+    WebSocketClientFactory,
+    WebSocketClientProtocol,
+)
+from autobahn.twisted.testing import (
+    create_pumper,
+    MemoryReactorClockResolver,
+)
+from autobahn.exception import Disconnected
+from zope.interface import implementer
+from .common import (
+    ServerBase,
+    IRelayTestClient,
+)
+from ..usage import (
+    MemoryUsageRecorder,
+    blur_size,
+)
+from ..transit_server import (
+    WebSocketTransitConnection,
+    TransitServerState,
+)
+
 
 def handshake(token, side=None):
     hs = b"please relay " + hexlify(token)
@@ -12,27 +35,28 @@ def handshake(token, side=None):
 
 class _Transit:
     def count(self):
-        return sum([len(potentials)
-                    for potentials
-                    in self._transit_server._pending_requests.values()])
+        return sum([
+            len(potentials)
+            for potentials
+            in self._transit_server.pending_requests._requests.values()
+        ])
 
     def test_blur_size(self):
-        blur = transit_server.blur_size
-        self.failUnlessEqual(blur(0), 0)
-        self.failUnlessEqual(blur(1), 10e3)
-        self.failUnlessEqual(blur(10e3), 10e3)
-        self.failUnlessEqual(blur(10e3+1), 20e3)
-        self.failUnlessEqual(blur(15e3), 20e3)
-        self.failUnlessEqual(blur(20e3), 20e3)
-        self.failUnlessEqual(blur(1e6), 1e6)
-        self.failUnlessEqual(blur(1e6+1), 2e6)
-        self.failUnlessEqual(blur(1.5e6), 2e6)
-        self.failUnlessEqual(blur(2e6), 2e6)
-        self.failUnlessEqual(blur(900e6), 900e6)
-        self.failUnlessEqual(blur(1000e6), 1000e6)
-        self.failUnlessEqual(blur(1050e6), 1100e6)
-        self.failUnlessEqual(blur(1100e6), 1100e6)
-        self.failUnlessEqual(blur(1150e6), 1200e6)
+        self.failUnlessEqual(blur_size(0), 0)
+        self.failUnlessEqual(blur_size(1), 10e3)
+        self.failUnlessEqual(blur_size(10e3), 10e3)
+        self.failUnlessEqual(blur_size(10e3+1), 20e3)
+        self.failUnlessEqual(blur_size(15e3), 20e3)
+        self.failUnlessEqual(blur_size(20e3), 20e3)
+        self.failUnlessEqual(blur_size(1e6), 1e6)
+        self.failUnlessEqual(blur_size(1e6+1), 2e6)
+        self.failUnlessEqual(blur_size(1.5e6), 2e6)
+        self.failUnlessEqual(blur_size(2e6), 2e6)
+        self.failUnlessEqual(blur_size(900e6), 900e6)
+        self.failUnlessEqual(blur_size(1000e6), 1000e6)
+        self.failUnlessEqual(blur_size(1050e6), 1100e6)
+        self.failUnlessEqual(blur_size(1100e6), 1100e6)
+        self.failUnlessEqual(blur_size(1150e6), 1200e6)
 
     def test_register(self):
         p1 = self.new_protocol()
@@ -49,7 +73,7 @@ class _Transit:
         self.assertEqual(self.count(), 0)
 
         # the token should be removed too
-        self.assertEqual(len(self._transit_server._pending_requests), 0)
+        self.assertEqual(len(self._transit_server.pending_requests._requests), 0)
 
     def test_both_unsided(self):
         p1 = self.new_protocol()
@@ -75,7 +99,6 @@ class _Transit:
         self.assertEqual(p2.get_received_data(), s1)
 
         p1.disconnect()
-        p2.disconnect()
         self.flush()
 
     def test_sided_unsided(self):
@@ -104,7 +127,6 @@ class _Transit:
         self.assertEqual(p2.get_received_data(), s1)
 
         p1.disconnect()
-        p2.disconnect()
         self.flush()
 
     def test_unsided_sided(self):
@@ -177,6 +199,7 @@ class _Transit:
 
         p2.send(handshake(token1, side=side1))
         self.flush()
+        self.flush()
         self.assertEqual(self.count(), 2) # same-side connections don't match
 
         # when the second side arrives, the spare first connection should be
@@ -185,8 +208,8 @@ class _Transit:
         p3.send(handshake(token1, side=side2))
         self.flush()
         self.assertEqual(self.count(), 0)
-        self.assertEqual(len(self._transit_server._pending_requests), 0)
-        self.assertEqual(len(self._transit_server._active_connections), 2)
+        self.assertEqual(len(self._transit_server.pending_requests._requests), 0)
+        self.assertEqual(len(self._transit_server.active_connections._connections), 2)
         # That will trigger a disconnect on exactly one of (p1 or p2).
         # The other connection should still be connected
         self.assertEqual(sum([int(t.connected) for t in [p1, p2]]), 1)
@@ -266,7 +289,8 @@ class _Transit:
 
         token1 = b"\x00"*32
         # sending too many bytes is impatience.
-        p1.send(b"please relay " + hexlify(token1) + b"\nNOWNOWNOW")
+        p1.send(b"please relay " + hexlify(token1))
+        p1.send(b"\nNOWNOWNOW")
         self.flush()
 
         exp = b"impatient\n"
@@ -281,7 +305,8 @@ class _Transit:
         side1 = b"\x01"*8
         # sending too many bytes is impatience.
         p1.send(b"please relay " + hexlify(token1) +
-                b" for side " + hexlify(side1) + b"\nNOWNOWNOW")
+                b" for side " + hexlify(side1))
+        p1.send(b"\nNOWNOWNOW")
         self.flush()
 
         exp = b"impatient\n"
@@ -327,22 +352,163 @@ class _Transit:
         # hang up before sending anything
         p1.disconnect()
 
+
 class TransitWithLogs(_Transit, ServerBase, unittest.TestCase):
     log_requests = True
 
+    def new_protocol(self):
+        return self.new_protocol_tcp()
+
+
 class TransitWithoutLogs(_Transit, ServerBase, unittest.TestCase):
     log_requests = False
+
+    def new_protocol(self):
+        return self.new_protocol_tcp()
+
+
+def _new_protocol_ws(transit_server, log_requests):
+    """
+    Internal helper for test-suites that need to provide WebSocket
+    client/server pairs.
+
+    :returns: a 2-tuple: (iosim.IOPump, protocol)
+    """
+    ws_factory = WebSocketServerFactory("ws://localhost:4002")
+    ws_factory.protocol = WebSocketTransitConnection
+    ws_factory.transit = transit_server
+    ws_factory.log_requests = log_requests
+    ws_protocol = ws_factory.buildProtocol(('127.0.0.1', 0))
+
+    @implementer(IRelayTestClient)
+    class TransitWebSocketClientProtocol(WebSocketClientProtocol):
+        _received = b""
+        connected = False
+
+        def connectionMade(self):
+            self.connected = True
+            return super(TransitWebSocketClientProtocol, self).connectionMade()
+
+        def connectionLost(self, reason):
+            self.connected = False
+            return super(TransitWebSocketClientProtocol, self).connectionLost(reason)
+
+        def onMessage(self, data, isBinary):
+            self._received = self._received + data
+
+        def send(self, data):
+            self.sendMessage(data, True)
+
+        def get_received_data(self):
+            return self._received
+
+        def reset_received_data(self):
+            self._received = b""
+
+        def disconnect(self):
+            self.sendClose(1000, True)
+
+    client_factory = WebSocketClientFactory()
+    client_factory.protocol = TransitWebSocketClientProtocol
+    client_protocol = client_factory.buildProtocol(('127.0.0.1', 31337))
+    client_protocol.disconnect = client_protocol.dropConnection
+
+    pump = iosim.connect(
+        ws_protocol,
+        iosim.makeFakeServer(ws_protocol),
+        client_protocol,
+        iosim.makeFakeClient(client_protocol),
+    )
+    return pump, client_protocol
+
+
+
+class TransitWebSockets(_Transit, ServerBase, unittest.TestCase):
+
+    def new_protocol(self):
+        return self.new_protocol_ws()
+
+    def new_protocol_ws(self):
+        pump, proto = _new_protocol_ws(self._transit_server, self.log_requests)
+        self._pumps.append(pump)
+        return proto
+
+    def test_websocket_to_tcp(self):
+        """
+        One client is WebSocket and one is TCP
+        """
+        p1 = self.new_protocol_ws()
+        p2 = self.new_protocol_tcp()
+
+        token1 = b"\x00"*32
+        side1 = b"\x01"*8
+        side2 = b"\x02"*8
+        p1.send(handshake(token1, side=side1))
+        self.flush()
+        p2.send(handshake(token1, side=side2))
+        self.flush()
+
+        # a correct handshake yields an ack, after which we can send
+        exp = b"ok\n"
+        self.assertEqual(p1.get_received_data(), exp)
+        self.assertEqual(p2.get_received_data(), exp)
+
+        p1.reset_received_data()
+        p2.reset_received_data()
+
+        # all data they sent after the handshake should be given to us
+        s1 = b"data1"
+        p1.send(s1)
+        self.flush()
+        self.assertEqual(p2.get_received_data(), s1)
+
+        p1.disconnect()
+        p2.disconnect()
+        self.flush()
+
+    def test_bad_handshake_old_slow(self):
+        """
+        This test only makes sense for TCP
+        """
+
+    def test_send_closed_partner(self):
+        """
+        Sending data to a closed partner causes an error that propogates
+        to the sender.
+        """
+        p1 = self.new_protocol()
+        p2 = self.new_protocol()
+
+        # set up a successful connection
+        token = b"a" * 32
+        p1.send(handshake(token))
+        p2.send(handshake(token))
+        self.flush()
+
+        # p2 loses connection, then p1 sends a message
+        p2.transport.loseConnection()
+        self.flush()
+
+        # at this point, p1 learns that p2 is disconnected (because it
+        # tried to relay "a message" but failed)
+
+        # try to send more (our partner p2 is gone now though so it
+        # should be an immediate error)
+        with self.assertRaises(Disconnected):
+            p1.send(b"more message")
+            self.flush()
+
 
 class Usage(ServerBase, unittest.TestCase):
     log_requests = True
 
     def setUp(self):
         super(Usage, self).setUp()
-        self._usage = []
-        def record(started, result, total_bytes, total_time, waiting_time):
-            self._usage.append((started, result, total_bytes,
-                                total_time, waiting_time))
-        self._transit_server.recordUsage = record
+        self._usage = MemoryUsageRecorder()
+        self._transit_server.usage.add_backend(self._usage)
+
+    def new_protocol(self):
+        return self.new_protocol_tcp()
 
     def test_empty(self):
         p1 = self.new_protocol()
@@ -351,11 +517,14 @@ class Usage(ServerBase, unittest.TestCase):
         self.flush()
 
         # that will log the "empty" usage event
-        self.assertEqual(len(self._usage), 1, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[0]
-        self.assertEqual(result, "empty", self._usage)
+        self.assertEqual(len(self._usage.events), 1, self._usage)
+        self.assertEqual(self._usage.events[0]["mood"], "empty", self._usage)
 
     def test_short(self):
+        # Note: this test only runs on TCP clients because WebSockets
+        # already does framing (so it's either "a bad handshake" or
+        # there's no handshake at all yet .. you can't have a "short"
+        # one).
         p1 = self.new_protocol()
         # hang up before sending a complete handshake
         p1.send(b"short")
@@ -363,9 +532,8 @@ class Usage(ServerBase, unittest.TestCase):
         self.flush()
 
         # that will log the "empty" usage event
-        self.assertEqual(len(self._usage), 1, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[0]
-        self.assertEqual(result, "empty", self._usage)
+        self.assertEqual(len(self._usage.events), 1, self._usage)
+        self.assertEqual("empty", self._usage.events[0]["mood"])
 
     def test_errory(self):
         p1 = self.new_protocol()
@@ -374,9 +542,8 @@ class Usage(ServerBase, unittest.TestCase):
         self.flush()
         # that will log the "errory" usage event, then drop the connection
         p1.disconnect()
-        self.assertEqual(len(self._usage), 1, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[0]
-        self.assertEqual(result, "errory", self._usage)
+        self.assertEqual(len(self._usage.events), 1, self._usage)
+        self.assertEqual(self._usage.events[0]["mood"], "errory", self._usage)
 
     def test_lonely(self):
         p1 = self.new_protocol()
@@ -389,10 +556,9 @@ class Usage(ServerBase, unittest.TestCase):
         p1.disconnect()
         self.flush()
 
-        self.assertEqual(len(self._usage), 1, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[0]
-        self.assertEqual(result, "lonely", self._usage)
-        self.assertIdentical(waiting_time, None)
+        self.assertEqual(len(self._usage.events), 1, self._usage)
+        self.assertEqual(self._usage.events[0]["mood"], "lonely", self._usage)
+        self.assertIdentical(self._usage.events[0]["waiting_time"], None)
 
     def test_one_happy_one_jilted(self):
         p1 = self.new_protocol()
@@ -406,7 +572,7 @@ class Usage(ServerBase, unittest.TestCase):
         p2.send(handshake(token1, side=side2))
         self.flush()
 
-        self.assertEqual(self._usage, []) # no events yet
+        self.assertEqual(self._usage.events, []) # no events yet
 
         p1.send(b"\x00" * 13)
         self.flush()
@@ -416,11 +582,10 @@ class Usage(ServerBase, unittest.TestCase):
         p1.disconnect()
         self.flush()
 
-        self.assertEqual(len(self._usage), 1, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[0]
-        self.assertEqual(result, "happy", self._usage)
-        self.assertEqual(total_bytes, 20)
-        self.assertNotIdentical(waiting_time, None)
+        self.assertEqual(len(self._usage.events), 1, self._usage)
+        self.assertEqual(self._usage.events[0]["mood"], "happy", self._usage)
+        self.assertEqual(self._usage.events[0]["total_bytes"], 20)
+        self.assertNotIdentical(self._usage.events[0]["waiting_time"], None)
 
     def test_redundant(self):
         p1a = self.new_protocol()
@@ -443,21 +608,80 @@ class Usage(ServerBase, unittest.TestCase):
         p1c.disconnect()
         self.flush()
 
-        self.assertEqual(len(self._usage), 1, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[0]
-        self.assertEqual(result, "lonely", self._usage)
+        self.assertEqual(len(self._usage.events), 1, self._usage)
+        self.assertEqual(self._usage.events[0]["mood"], "lonely")
 
         p2.send(handshake(token1, side=side2))
         self.flush()
-        self.assertEqual(len(self._transit_server._pending_requests), 0)
-        self.assertEqual(len(self._usage), 2, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[1]
-        self.assertEqual(result, "redundant", self._usage)
+        self.assertEqual(len(self._transit_server.pending_requests._requests), 0)
+        self.assertEqual(len(self._usage.events), 2, self._usage)
+        self.assertEqual(self._usage.events[1]["mood"], "redundant")
 
         # one of the these is unecessary, but probably harmless
         p1a.disconnect()
         p1b.disconnect()
         self.flush()
-        self.assertEqual(len(self._usage), 3, self._usage)
-        (started, result, total_bytes, total_time, waiting_time) = self._usage[2]
-        self.assertEqual(result, "happy", self._usage)
+        self.assertEqual(len(self._usage.events), 3, self._usage)
+        self.assertEqual(self._usage.events[2]["mood"], "happy")
+
+
+class UsageWebSockets(Usage):
+    """
+    All the tests of 'Usage' except with a WebSocket (instead of TCP)
+    transport.
+
+    This overrides ServerBase.new_protocol to achieve this. It might
+    be nicer to parametrize these tests in a way that doesn't use
+    inheritance .. but all the support etc classes are set up that way
+    already.
+    """
+
+    def setUp(self):
+        super(UsageWebSockets, self).setUp()
+        self._pump = create_pumper()
+        self._reactor = MemoryReactorClockResolver()
+        return self._pump.start()
+
+    def tearDown(self):
+        return self._pump.stop()
+
+    def new_protocol(self):
+        return self.new_protocol_ws()
+
+    def new_protocol_ws(self):
+        pump, proto = _new_protocol_ws(self._transit_server, self.log_requests)
+        self._pumps.append(pump)
+        return proto
+
+    def test_short(self):
+        """
+        This test essentially just tests the framing of the line-oriented
+        TCP protocol; it doesnt' make sense for the WebSockets case
+        because WS handles frameing: you either sent a 'bad handshake'
+        because it is semantically invalid or no handshake (yet).
+        """
+
+    def test_send_non_binary_message(self):
+        """
+        A non-binary WebSocket message is an error
+        """
+        ws_factory = WebSocketServerFactory("ws://localhost:4002")
+        ws_factory.protocol = WebSocketTransitConnection
+        ws_protocol = ws_factory.buildProtocol(('127.0.0.1', 0))
+        with self.assertRaises(ValueError):
+            ws_protocol.onMessage(u"foo", isBinary=False)
+
+
+class State(unittest.TestCase):
+    """
+    Tests related to server_state.TransitServerState
+    """
+
+    def setUp(self):
+        self.state = TransitServerState(None, None)
+
+    def test_empty_token(self):
+        self.assertEqual(
+            "-",
+            self.state.get_token(),
+        )
