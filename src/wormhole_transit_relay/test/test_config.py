@@ -24,6 +24,14 @@ class Config(unittest.TestCase):
                              "usage-db": None, "port": PORT,
                              "websocket": "tcp:4004", "websocket-url": None})
 
+    def test_websocket_url(self):
+        o = server_tap.Options()
+        o.parseOptions(["--websocket=tcp:4004", "--websocket-url=ws://example.com/"])
+        self.assertEqual(o, {"blur-usage": None, "log-fd": None,
+                             "usage-db": None, "port": PORT,
+                             "websocket": "tcp:4004",
+                             "websocket-url": "ws://example.com/"})
+
     def test_string(self):
         o = server_tap.Options()
         s = str(o)
