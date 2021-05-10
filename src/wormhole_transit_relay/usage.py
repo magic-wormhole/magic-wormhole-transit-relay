@@ -178,6 +178,9 @@ class UsageTracker(object):
             total_time = finished - started
             waiting_time = None
             total_bytes = bytes_sent
+            # note that "bytes_sent" should always be 0 here, but
+            # we're recording what the state-machine remembered in any
+            # case
 
         if self._blur_usage:
             started = self._blur_usage * (started // self._blur_usage)
