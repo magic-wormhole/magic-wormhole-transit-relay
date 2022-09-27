@@ -108,12 +108,18 @@ class Receiver(WebSocketClientProtocol):
 
 
 class TransitWebSockets(unittest.TestCase):
+    """
+    Integration-style tests of the transit WebSocket relay, using the
+    real reactor (and running transit as a subprocess).
+    """
 
     @inlineCallbacks
     def test_buffer_fills(self):
         """
-        A running transit relay stops accepting incoming data if the peer
-        isn't reading.
+        A running transit relay stops accepting incoming data at a
+        reasonable amount if the peer isn't reading. This test defines
+        that as 'less than 100MiB' although in practice Twisted seems
+        to stop before 10MiB.
         """
         from twisted.internet import reactor
         transit_proto = _CollectOutputProtocol()
