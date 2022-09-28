@@ -177,7 +177,7 @@ class TransitWebSockets(unittest.TestCase):
 
         done = Deferred()
         last_produce = None
-        timeout = 3  # seconds
+        timeout = 2  # seconds
 
         def asked_for_data():
             nonlocal last_produce
@@ -192,8 +192,8 @@ class TransitWebSockets(unittest.TestCase):
                 if reactor.seconds() - last_produce > timeout:
                     done.callback(None)
                     return
-            # recursive call to ourselves to check again in a second
-            reactor.callLater(1, check_if_done)
+            # recursive call to ourselves to check again soon
+            reactor.callLater(.1, check_if_done)
         check_if_done()
 
         yield done
