@@ -16,4 +16,35 @@ together, allowing them to pretend they have a direct connection.
 This server used to be included in the magic-wormhole repository, but was
 split out into a separate repo to aid deployment and development.
 
+## Quick Example (running on a VPS)
+
+If you would like to set up a transit server on a VPS or other publicly-accessible server running Ubuntu:
+
+```
+# Install Python 3 pip and twist
+apt install python3-pip python3-twisted
+
+# Install magic-wormhole-transit-relay
+pip3 install magic-wormhole-transit-relay
+
+# Run transit-relay in the background
+twistd3 transitrelay
+
+# Check on logs
+cat twistd.log  # or `tail -f twistd.log`
+
+# Kill transit-relay
+kill `cat twistd.pid`
+```
+
+Assuming you _haven't_ killed transit-relay, when you do `wormhole send`, make sure you add the `--transit-helper` argument, like:
+
+```
+wormhole send --transit-helper=tcp:[server ip here]:4001 file-to-send
+```
+
+On the receiving end, paste in the command output by `wormhole send`.
+
+## Further Instructions
+
 See docs/running.md for instructions to launch the server.
