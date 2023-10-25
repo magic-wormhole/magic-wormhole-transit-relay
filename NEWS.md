@@ -3,6 +3,9 @@ User-visible changes in "magic-wormhole-transit-relay":
 ## unreleased
 
 * drop Python 2, Python 3.5 and 3.6 support
+* add Python 3.9, 3.10, 3.11 and 3.12 to CI
+* update versioneer to 0.29
+
 
 ## Release 0.2.1 (11-Sep-2019)
 
