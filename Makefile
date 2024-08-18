@@ -50,10 +50,10 @@ release-test:
 	python -m venv testmf_venv
 	testmf_venv/bin/pip install --upgrade pip
 	testmf_venv/bin/pip install dist/magic_wormhole_transit_relay-`git describe --abbrev=0`-py3-none-any.whl
-	testmf_venv/bin/twistd wormhole-mailbox --version
+	testmf_venv/bin/twistd transitrelay --version
 	testmf_venv/bin/pip uninstall -y magic_wormhole
 	testmf_venv/bin/pip install dist/magic-wormhole-transit-relay-`git describe --abbrev=0`.tar.gz
-	testmf_venv/bin/twistd wormhole-mailbox --version
+	testmf_venv/bin/twistd transitrelay --version
 	rm -rf testmf_venv
 
 release-upload:
