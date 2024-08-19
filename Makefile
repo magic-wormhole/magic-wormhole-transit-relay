@@ -31,8 +31,8 @@ release:
 	gpg --pinentry=loopback -u meejah@meejah.ca --armor --sign NEWS.md
 
 	@echo "Bump version and create tag"
-#	python3 update-version.py
-	python3 update-version.py --patch  # for bugfix release
+	python3 update-version.py
+#	python3 update-version.py --patch  # for bugfix release
 
 	@echo "Build and sign wheel"
 	python3 setup.py bdist_wheel
@@ -63,4 +63,4 @@ release-upload:
 	git add signatures/magic-wormhole-transit-relay-`git describe --abbrev=0`.tar.gz.asc
 	git add signatures/magic_wormhole_transit_relay-`git describe --abbrev=0`-py3-none-any.whl.asc
 	git commit -m "signatures for release"
-	git push origin `git describe --abbrev=0`
+	git push origin-push `git describe --abbrev=0`
