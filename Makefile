@@ -51,15 +51,16 @@ release-test:
 	testmf_venv/bin/pip install --upgrade pip
 	testmf_venv/bin/pip install dist/magic_wormhole_transit_relay-`git describe --abbrev=0`-py3-none-any.whl
 	testmf_venv/bin/twistd transitrelay --version
-	testmf_venv/bin/pip uninstall -y magic_wormhole
+	testmf_venv/bin/pip uninstall -y magic-wormhole-transit-relay
 	testmf_venv/bin/pip install dist/magic-wormhole-transit-relay-`git describe --abbrev=0`.tar.gz
 	testmf_venv/bin/twistd transitrelay --version
 	rm -rf testmf_venv
 
 release-upload:
-	twine upload --username __token__ --password `cat PRIVATE-release-token` dist/magic_wormhole_transit_relay-`git describe --abbrev=0`-py3-none-any.whl dist/magic_wormhole_transit_relay-`git describe --abbrev=0`-py3-none-any.whl.asc dist/magic-wormhole-`git describe --abbrev=0`.tar.gz dist/magic-wormhole-`git describe --abbrev=0`.tar.gz.asc
+	twine upload --username __token__ --password `cat PRIVATE-release-token` dist/magic_wormhole_transit_relay-`git describe --abbrev=0`-py3-none-any.whl dist/magic_wormhole_transit_relay-`git describe --abbrev=0`-py3-none-any.whl.asc dist/magic-wormhole-transit-relay-`git describe --abbrev=0`.tar.gz dist/magic-wormhole-transit-relay-`git describe --abbrev=0`.tar.gz.asc
 	mv dist/*-`git describe --abbrev=0`.tar.gz.asc signatures/
 	mv dist/*-`git describe --abbrev=0`-py3-none-any.whl.asc signatures/
-	git add signatures/magic-wormhole-`git describe --abbrev=0`.tar.gz.asc
+	git add signatures/magic-wormhole-transit-relay-`git describe --abbrev=0`.tar.gz.asc
 	git add signatures/magic_wormhole_transit_relay-`git describe --abbrev=0`-py3-none-any.whl.asc
 	git commit -m "signatures for release"
+	git push origin `git describe --abbrev=0`
