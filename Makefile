@@ -24,6 +24,9 @@ release:
 	git diff-files --quiet
 	git diff-index --quiet --cached HEAD --
 
+	@echo "Did you update NEWS.md?"
+	git diff master.. --stat | grep NEWS.md
+
 	@echo "Install required build software"
 	python -m pip install --editable .[dev,release]
 
