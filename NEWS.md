@@ -2,6 +2,7 @@ User-visible changes in "magic-wormhole-transit-relay":
 
 ## unreleased
 
+* Drop Pythons from 3.9 and earlier (3.9 is EOL in a few months)
 * (put release notes here when adding PRs)
 
 
