@@ -5,9 +5,6 @@
 from dulwich.repo import Repo
 from dulwich.porcelain import tag_list
 
-from twisted.internet.task import react
-from twisted.internet.defer import ensureDeferred
-
 
 def existing_tags(git):
     versions = [
@@ -17,10 +14,10 @@ def existing_tags(git):
     return versions
 
 
-async def main(reactor):
+def main():
     git = Repo(".")
     print("{}.{}.{}".format(*sorted(existing_tags(git))[-1]))
 
 
 if __name__ == "__main__":
-    react(lambda r: ensureDeferred(main(r)))
+    main()

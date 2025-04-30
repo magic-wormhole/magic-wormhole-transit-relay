@@ -16,31 +16,37 @@ release-clean:
 	-rm dist/magic_wormhole_transit_relay-`python newest-version.py`-py3-none-any.whl*
 	git tag -d `python newest-version.py`
 
+# create a branch, like: git checkout -b prepare-release-0.16.0
+# then run these, so CI can run on the release
+# "NEWS.md" must be updated with release-name BEFORE running this
 release:
 	@echo "Is checkout clean?"
 	git diff-files --quiet
 	git diff-index --quiet --cached HEAD --
 
+	@echo "Did you update NEWS.md?"
+	git diff master.. --stat | grep NEWS.md
+
 	@echo "Install required build software"
-	python3 -m pip install --editable .[build]
+	python -m pip install --editable .[dev,release]
 
 	@echo "Test README"
-	python3 setup.py check -s
+	python setup.py check -s
 
-	@echo "Is GPG Agent running, and has key?"
-	gpg --pinentry=loopback -u meejah@meejah.ca --armor --sign NEWS.md
+	@echo "Is GPG Agent rubnning, and has key?"
+	gpg --pinentry=loopback -u meejah@meejah.ca --armor --clear-sign NEWS.md
 
 	@echo "Bump version and create tag"
-	python3 update-version.py
-#	python3 update-version.py --patch  # for bugfix release
+	python update-version.py
+#	python update-version.py --patch  # for bugfix release
 
 	@echo "Build and sign wheel"
-	python3 setup.py bdist_wheel
+	python setup.py bdist_wheel
 	gpg --pinentry=loopback -u meejah@meejah.ca --armor --detach-sign dist/magic_wormhole_transit_relay-`git describe --abbrev=0`-py3-none-any.whl
 	ls dist/*`git describe --abbrev=0`*
 
 	@echo "Build and sign source-dist"
-	python3 setup.py sdist
+	python setup.py sdist
 	gpg --pinentry=loopback -u meejah@meejah.ca --armor --detach-sign dist/magic-wormhole-transit-relay-`git describe --abbrev=0`.tar.gz
 	ls dist/*`git describe --abbrev=0`*
 
@@ -51,7 +57,7 @@ release-test:
 	testmf_venv/bin/pip install --upgrade pip
 	testmf_venv/bin/pip install dist/magic_wormhole_transit_relay-`git describe --abbrev=0`-py3-none-any.whl
 	testmf_venv/bin/twistd transitrelay --version
-	testmf_venv/bin/pip uninstall -y magic-wormhole-transit-relay
+	testmf_venv/bin/pip uninstall -y magic_wormhole_transit_relay
 	testmf_venv/bin/pip install dist/magic-wormhole-transit-relay-`git describe --abbrev=0`.tar.gz
 	testmf_venv/bin/twistd transitrelay --version
 	rm -rf testmf_venv
@@ -64,3 +70,7 @@ release-upload:
 	git add signatures/magic_wormhole_transit_relay-`git describe --abbrev=0`-py3-none-any.whl.asc
 	git commit -m "signatures for release"
 	git push origin-push `git describe --abbrev=0`
+
+
+dilation.png: dilation.seqdiag
+	seqdiag --no-transparency -T png --size 1000x800 -o dilation.png

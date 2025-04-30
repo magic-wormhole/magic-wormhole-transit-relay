@@ -24,7 +24,7 @@ setup(name="magic-wormhole-transit-relay",
       extras_require={
           ':sys_platform=="win32"': ["pypiwin32"],
           "dev": ["mock", "tox", "pyflakes"],
-          "build": ["twine", "dulwich", "readme_renderer", "gpg", "wheel"],
+          "release": ["twine", "dulwich", "docutils", "gpg", "wheel"],
       },
       test_suite="wormhole_transit_relay.test",
       cmdclass=commands,
