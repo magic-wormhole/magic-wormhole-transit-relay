@@ -18,6 +18,7 @@ release-clean:
 
 # create a branch, like: git checkout -b prepare-release-0.16.0
 # then run these, so CI can run on the release
+# "NEWS.md" must be updated with release-name BEFORE running this
 release:
 	@echo "Is checkout clean?"
 	git diff-files --quiet
