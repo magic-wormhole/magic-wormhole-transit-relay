@@ -18,10 +18,14 @@ release-clean:
 
 # create a branch, like: git checkout -b prepare-release-0.16.0
 # then run these, so CI can run on the release
+# "NEWS.md" must be updated with release-name BEFORE running this
 release:
 	@echo "Is checkout clean?"
 	git diff-files --quiet
 	git diff-index --quiet --cached HEAD --
+
+	@echo "Did you update NEWS.md?"
+	git diff master.. --stat | grep NEWS.md
 
 	@echo "Install required build software"
 	python -m pip install --editable .[dev,release]
