@@ -27,7 +27,7 @@ class RelayEchoClient(Protocol):
     def connectionMade(self):
         print(">CONNECT")
         self.data = b""
-        self.transport.write(u"please relay {}\n".format(self.factory.token).encode("ascii"))
+        self.transport.write("please relay {}\n".format(self.factory.token).encode("ascii"))
 
     def dataReceived(self, data):
         print(">RECV {} bytes".format(len(data)))

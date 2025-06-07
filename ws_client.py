@@ -27,7 +27,7 @@ class RelayEchoClient(WebSocketClientProtocol):
     def onOpen(self):
         self._received = b""
         self.sendMessage(
-            u"please relay {} for side {}".format(
+            "please relay {} for side {}".format(
                 self.factory.token,
                 self.factory.side,
             ).encode("ascii"),

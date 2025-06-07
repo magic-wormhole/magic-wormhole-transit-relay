@@ -669,7 +669,7 @@ class UsageWebSockets(Usage):
         ws_factory.protocol = WebSocketTransitConnection
         ws_protocol = ws_factory.buildProtocol(('127.0.0.1', 0))
         with self.assertRaises(ValueError):
-            ws_protocol.onMessage(u"foo", isBinary=False)
+            ws_protocol.onMessage("foo", isBinary=False)
 
 
 class State(unittest.TestCase):
