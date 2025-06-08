@@ -1,6 +1,7 @@
 from binascii import hexlify
 from twisted.trial import unittest
 from twisted.test import iosim
+from twisted.internet.testing import MemoryReactorClock
 from autobahn.twisted.websocket import (
     WebSocketServerFactory,
     WebSocketClientFactory,
@@ -8,7 +9,6 @@ from autobahn.twisted.websocket import (
 )
 from autobahn.twisted.testing import (
     create_pumper,
-    MemoryReactorClockResolver,
 )
 from autobahn.exception import Disconnected
 from zope.interface import implementer
@@ -639,7 +639,7 @@ class UsageWebSockets(Usage):
     def setUp(self):
         super(UsageWebSockets, self).setUp()
         self._pump = create_pumper()
-        self._reactor = MemoryReactorClockResolver()
+        self._reactor = MemoryReactorClock()
         return self._pump.start()
 
     def tearDown(self):
