@@ -25,7 +25,7 @@ class Options(usage.Options):
     longdesc = LONGDESC
 
     optParameters = [
-        ("port", "p", "tcp:4001:interface=\:\:", "endpoint to listen on"),
+        ("port", "p", r"tcp:4001:interface=\:\:", "endpoint to listen on"),
         ("websocket", "w", None, "endpoint to listen for WebSocket connections"),
         ("websocket-url", "u", None, "WebSocket URL (derived from endpoint if not provided)"),
         ("blur-usage", None, None, "blur timestamps and data sizes in logs"),
