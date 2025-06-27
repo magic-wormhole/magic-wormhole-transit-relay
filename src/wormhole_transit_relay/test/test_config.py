@@ -1,7 +1,7 @@
 from twisted.trial import unittest
 from .. import server_tap
 
-PORT = "tcp:4001:interface=\:\:"
+PORT = r"tcp:4001:interface=\:\:"
 
 class Config(unittest.TestCase):
     def test_defaults(self):
