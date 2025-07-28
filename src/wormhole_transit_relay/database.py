@@ -1,16 +1,16 @@
+import importlib.resources
 import os
 import sqlite3
 import tempfile
-from pkg_resources import resource_string
 from twisted.python import log
 
 class DBError(Exception):
     pass
 
 def get_schema(version):
-    schema_bytes = resource_string("wormhole_transit_relay",
-                                   "db-schemas/v%d.sql" % version)
-    return schema_bytes.decode("utf-8")
+    sql_filepath = f"db-schemas/v{version}.sql"
+    path = importlib.resources.files("wormhole_transit_relay").joinpath(sql_filepath)
+    return path.read_text(encoding="utf-8")
 
 ## def get_upgrader(new_version):
 ##     schema_bytes = resource_string("wormhole_transit_relay",
