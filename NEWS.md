@@ -2,8 +2,15 @@ User-visible changes in "magic-wormhole-transit-relay":
 
 ## unreleased
 
-* Drop Pythons from 3.9 and earlier (3.9 is EOL in a few months)
 * (put release notes here when adding PRs)
+
+## Release 0.5.0 (2-Mar-2026)
+
+* Drop Pythons from 3.9 and earlier (3.9 is EOL)
+* Replace deprecated pkg_resources use (@sblondon)
+* Use f-strings (@sblondon)
+* General cleanup by @sblondon
+* Remove use of Autobahn test reactor (@meejah)
 
 
 ## Release 0.4.0 (6-Nov-2024)
