@@ -71,6 +71,33 @@ class DB(unittest.TestCase):
         )
         self.assertEqual(0, len(t.usage._backends))
 
+    def test_blurred_started_does_not_precede_reboot(self):
+        rebooted = 1519075308.25
+
+        d = self.mktemp()
+        os.mkdir(d)
+        usage_db = os.path.join(d, "usage.sqlite")
+        db = database.get_db(usage_db)
+        t = Transit(
+            create_usage_tracker(blur_usage=5*60, log_file=None, usage_db=db),
+            lambda: rebooted,
+        )
+
+        t.usage.record(
+            started=rebooted + 10,
+            buddy_started=rebooted + 11,
+            result="happy",
+            bytes_sent=100,
+            buddy_bytes=0,
+        )
+        t.update_stats()
+
+        current = db.execute("SELECT * FROM `current`").fetchone()
+        self.assertEqual(current["rebooted"], int(rebooted))
+        row = db.execute("SELECT * FROM `usage`").fetchone()
+        self.assertEqual(row["started"], rebooted)
+        self.assertTrue(row["started"] > current["rebooted"])
+
 
 class LogToStdout(unittest.TestCase):
     def test_log(self):

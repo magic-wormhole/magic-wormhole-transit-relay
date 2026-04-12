@@ -2,7 +2,8 @@ User-visible changes in "magic-wormhole-transit-relay":
 
 ## unreleased
 
-* (put release notes here when adding PRs)
+* Do not blur early process-lifetime usage timestamps to before the relay
+  reboot time (#63)
 
 ## Release 0.5.0 (2-Mar-2026)
 

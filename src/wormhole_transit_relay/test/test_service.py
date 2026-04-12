@@ -12,7 +12,8 @@ class Service(unittest.TestCase):
             s = server_tap.makeService(o)
         self.assertEqual(t.mock_calls,
                          [mock.call(blur_usage=None,
-                                    log_file=None, usage_db=None)])
+                                    log_file=None, usage_db=None),
+                          mock.call().set_rebooted(mock.ANY)])
         self.assertIsInstance(s, MultiService)
 
     def test_blur(self):
@@ -22,7 +23,8 @@ class Service(unittest.TestCase):
             server_tap.makeService(o)
         self.assertEqual(t.mock_calls,
                          [mock.call(blur_usage=60,
-                                    log_file=None, usage_db=None)])
+                                    log_file=None, usage_db=None),
+                          mock.call().set_rebooted(mock.ANY)])
 
     def test_log_fd(self):
         o = server_tap.Options()
@@ -35,7 +37,8 @@ class Service(unittest.TestCase):
         self.assertEqual(f.mock_calls, [mock.call(99, "w")])
         self.assertEqual(t.mock_calls,
                          [mock.call(blur_usage=None,
-                                    log_file=fd, usage_db=None)])
+                                    log_file=fd, usage_db=None),
+                          mock.call().set_rebooted(mock.ANY)])
 
     def test_websocket(self):
         """
