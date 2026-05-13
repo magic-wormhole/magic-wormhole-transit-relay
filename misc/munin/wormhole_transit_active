@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 """
 Use the following in /etc/munin/plugin-conf.d/wormhole :
@@ -27,7 +27,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "config":
 
 dbfile = os.environ["usagedb"]
 assert os.path.exists(dbfile)
-db = sqlite3.connect(dbfile)
+db = sqlite3.connect("file:%s?mode=ro" % dbfile, uri=True)
 
 MINUTE = 60.0
 updated,waiting,connected = db.execute("SELECT `updated`,`waiting`,`connected`"
