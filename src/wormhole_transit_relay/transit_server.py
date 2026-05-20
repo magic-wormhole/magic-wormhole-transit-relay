@@ -158,6 +158,7 @@ class Transit:
         self.usage = usage
         self._timestamp = get_timestamp
         self._rebooted = self._timestamp()
+        self.usage.set_rebooted(self._rebooted)
 
     def update_stats(self):
         # TODO: when a connection is half-closed, len(active) will be odd. a

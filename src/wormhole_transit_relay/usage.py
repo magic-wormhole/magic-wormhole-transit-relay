@@ -139,10 +139,20 @@ class UsageTracker:
         """
         self._backends = set()
         self._blur_usage = blur_usage
+        self._rebooted = None
         if blur_usage:
             log.msg("blurring access times to %d seconds" % self._blur_usage)
         else:
             log.msg("not blurring access times")
+
+    def set_rebooted(self, rebooted):
+        """
+        Remember when this server process started.
+
+        Blurred usage timestamps must not be rounded back before this point,
+        or "since reboot" reports will miss early process-lifetime traffic.
+        """
+        self._rebooted = rebooted
 
     def add_backend(self, backend):
         """
@@ -184,6 +194,8 @@ class UsageTracker:
 
         if self._blur_usage:
             started = self._blur_usage * (started // self._blur_usage)
+            if self._rebooted is not None:
+                started = max(self._rebooted, started)
             total_bytes = blur_size(total_bytes)
 
         # This is "a dict" instead of "kwargs" because we have to make
